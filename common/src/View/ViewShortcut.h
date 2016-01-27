@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__ViewShortcut__
-#define __TrenchBroom__ViewShortcut__
+#ifndef TrenchBroom_ViewShortcut
+#define TrenchBroom_ViewShortcut
 
 #include "Preference.h"
 #include "View/Action.h"
@@ -43,24 +43,21 @@ namespace TrenchBroom {
             ViewShortcut(const KeyboardShortcut& shortcut, int context, const Action& action2D, const Action& action3D);
             ViewShortcut(const KeyboardShortcut& shortcut, int context, const Action& action);
             
-            wxAcceleratorEntry acceleratorEntry(ActionView view) const;
-            bool appliesToContext(int context) const;
-            
             void resetShortcut();
         private: // implement KeyboardShortcutEntry interface
             int doGetActionContext() const;
             bool doGetModifiable() const;
-            int doGetRequiredModifiers() const;
             wxString doGetActionDescription() const;
+            wxString doGetJsonString() const;
+            const Preference<KeyboardShortcut>& doGetPreference() const;
             const KeyboardShortcut& doGetShortcut() const;
             void doUpdateShortcut(const KeyboardShortcut& shortcut);
+            wxAcceleratorEntry doGetAcceleratorEntry(ActionView view) const;
         private:
-            const KeyboardShortcut& shortcut() const;
-            
             IO::Path path(const Action& action2D, const Action& action3D) const;
             String buildDescription(const Action& action2D, const Action& action3D) const;
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__ViewShortcut__) */
+#endif /* defined(TrenchBroom_ViewShortcut) */

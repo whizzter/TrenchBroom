@@ -17,11 +17,12 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__Parser__
-#define __TrenchBroom__Parser__
+#ifndef TrenchBroom_Parser
+#define TrenchBroom_Parser
 
 #include "Exceptions.h"
 #include "StringUtils.h"
+#include "IO/ParserStatus.h"
 #include "IO/Token.h"
 
 #include <map>
@@ -39,10 +40,23 @@ namespace TrenchBroom {
             virtual ~Parser() {}
         protected:
             void expect(const TokenType typeMask, const Token& token) const {
-                if ((token.type() & typeMask) == 0)
-                    throw ParserException(token.line(), token.column()) << "Expected " << tokenName(typeMask) << ", but got " << tokenName(token.type());
+                if ((token.type() & typeMask) == 0) {
+                    const String data(token.begin(), token.end());
+                    throw ParserException(token.line(), token.column()) << " Expected " << tokenName(typeMask) << ", but got '" << data << "'";
+                }
             }
             
+            void expect(ParserStatus& status, const TokenType typeMask, const Token& token) const {
+                if ((token.type() & typeMask) == 0) {
+                    const String data(token.begin(), token.end());
+                    StringStream msg;
+                    msg << " Expected " << tokenName(typeMask) << ", but got '" << data << "'";
+                    const String msgStr = msg.str();
+                    status.error(token.line(), token.column(), msgStr);
+                    throw ParserException(token.line(), token.column(), msgStr);
+                }
+            }
+
             String tokenName(const TokenType typeMask) const {
                 if (m_tokenNames.empty())
                     m_tokenNames = tokenNames();
@@ -68,4 +82,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__Parser__) */
+#endif /* defined(TrenchBroom_Parser) */

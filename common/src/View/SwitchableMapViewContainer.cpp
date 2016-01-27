@@ -28,6 +28,7 @@
 #include "View/ThreePaneMapView.h"
 #include "View/FourPaneMapView.h"
 #include "View/GLContextManager.h"
+#include "View/Inspector.h"
 #include "View/MapDocument.h"
 #include "View/MapViewContainer.h"
 #include "View/MapViewBar.h"
@@ -63,6 +64,14 @@ namespace TrenchBroom {
             m_mapRenderer = NULL;
         }
 
+        void SwitchableMapViewContainer::connectTopWidgets(Inspector* inspector) {
+            inspector->connectTopWidgets(m_mapViewBar);
+        }
+
+        bool SwitchableMapViewContainer::viewportHasFocus() const {
+            return m_mapView != NULL && m_mapView->isCurrent();
+        }
+
         void SwitchableMapViewContainer::switchToMapView(const MapViewLayout viewId) {
             if (m_mapView != NULL) {
                 m_mapView->Destroy();
@@ -93,26 +102,62 @@ namespace TrenchBroom {
             m_mapView->SetFocus();
         }
 
-        void SwitchableMapViewContainer::setToolBoxDropTarget() {
-            m_mapView->setToolBoxDropTarget();
-        }
-        
-        void SwitchableMapViewContainer::clearDropTarget() {
-            m_mapView->clearDropTarget();
+        bool SwitchableMapViewContainer::anyToolActive() const {
+            return createComplexBrushToolActive() || clipToolActive() || rotateObjectsToolActive() || vertexToolActive();
         }
 
-        Vec3 SwitchableMapViewContainer::pasteObjectsDelta(const BBox3& bounds) const {
-            return m_mapView->pasteObjectsDelta(bounds);
+        void SwitchableMapViewContainer::deactivateTool() {
+            m_toolBox->deactivateAllTools();
+        }
+
+        bool SwitchableMapViewContainer::createComplexBrushToolActive() const {
+            return m_toolBox->createComplexBrushToolActive();
+        }
+
+        bool SwitchableMapViewContainer::canToggleCreateComplexBrushTool() const {
+            return true;
+        }
+
+        void SwitchableMapViewContainer::toggleCreateComplexBrushTool() {
+            m_toolBox->toggleCreateComplexBrushTool();
         }
         
-        void SwitchableMapViewContainer::centerCameraOnSelection() {
-            m_mapView->centerCameraOnSelection();
+        bool SwitchableMapViewContainer::clipToolActive() const {
+            return m_toolBox->clipToolActive();
+        }
+
+        bool SwitchableMapViewContainer::canToggleClipTool() const {
+            return clipToolActive() || lock(m_document)->selectedNodes().hasOnlyBrushes();
+        }
+
+        void SwitchableMapViewContainer::toggleClipTool() {
+            m_toolBox->toggleClipTool();
         }
         
-        void SwitchableMapViewContainer::moveCameraToPosition(const Vec3& position) {
-            m_mapView->moveCameraToPosition(position);
+        bool SwitchableMapViewContainer::rotateObjectsToolActive() const {
+            return m_toolBox->rotateObjectsToolActive();
         }
-    
+
+        bool SwitchableMapViewContainer::canToggleRotateObjectsTool() const {
+            return rotateObjectsToolActive() || lock(m_document)->hasSelectedNodes();
+        }
+
+        void SwitchableMapViewContainer::toggleRotateObjectsTool() {
+            m_toolBox->toggleRotateObjectsTool();
+        }
+        
+        bool SwitchableMapViewContainer::vertexToolActive() const {
+            return m_toolBox->vertexToolActive();
+        }
+
+        bool SwitchableMapViewContainer::canToggleVertexTool() const {
+            return vertexToolActive() || lock(m_document)->selectedNodes().hasOnlyBrushes();
+        }
+
+        void SwitchableMapViewContainer::toggleVertexTool() {
+            m_toolBox->toggleVertexTool();
+        }
+
         bool SwitchableMapViewContainer::canMoveCameraToNextTracePoint() const {
             MapDocumentSPtr document = lock(m_document);
             if (!document->isPointFileLoaded())
@@ -151,27 +196,72 @@ namespace TrenchBroom {
             m_mapView->moveCameraToCurrentTracePoint();
         }
 
+        bool SwitchableMapViewContainer::canMaximizeCurrentView() const {
+            return m_mapView->canMaximizeCurrentView();
+        }
+        
+        bool SwitchableMapViewContainer::currentViewMaximized() const {
+            return m_mapView->currentViewMaximized();
+        }
+        
+        void SwitchableMapViewContainer::toggleMaximizeCurrentView() {
+            m_mapView->toggleMaximizeCurrentView();
+        }
+
         void SwitchableMapViewContainer::bindObservers() {
-            PreferenceManager& prefs = PreferenceManager::instance();
-            prefs.preferenceDidChangeNotifier.addObserver(this, &SwitchableMapViewContainer::preferenceDidChange);
-            
             m_toolBox->refreshViewsNotifier.addObserver(this, &SwitchableMapViewContainer::refreshViews);
         }
         
         void SwitchableMapViewContainer::unbindObservers() {
-            PreferenceManager& prefs = PreferenceManager::instance();
-            prefs.preferenceDidChangeNotifier.removeObserver(this, &SwitchableMapViewContainer::preferenceDidChange);
-            
             m_toolBox->refreshViewsNotifier.removeObserver(this, &SwitchableMapViewContainer::refreshViews);
-        }
-        
-        void SwitchableMapViewContainer::preferenceDidChange(const IO::Path& path) {
-            if (path == Preferences::MapViewLayout.path())
-                switchToMapView(static_cast<MapViewLayout>(pref(Preferences::MapViewLayout)));
         }
 
         void SwitchableMapViewContainer::refreshViews(Tool* tool) {
             m_mapView->Refresh();
+        }
+
+        bool SwitchableMapViewContainer::doGetIsCurrent() const {
+            return m_mapView->isCurrent();
+        }
+        
+        void SwitchableMapViewContainer::doSetToolBoxDropTarget() {
+            m_mapView->setToolBoxDropTarget();
+        }
+        
+        void SwitchableMapViewContainer::doClearDropTarget() {
+            m_mapView->clearDropTarget();
+        }
+        
+        bool SwitchableMapViewContainer::doCanSelectTall() {
+            return m_mapView->canSelectTall();
+        }
+        
+        void SwitchableMapViewContainer::doSelectTall() {
+            m_mapView->selectTall();
+        }
+
+        bool SwitchableMapViewContainer::doCanFlipObjects() const {
+            return m_mapView->canFlipObjects();
+        }
+        
+        void SwitchableMapViewContainer::doFlipObjects(const Math::Direction direction) {
+            m_mapView->flipObjects(direction);
+        }
+        
+        Vec3 SwitchableMapViewContainer::doGetPasteObjectsDelta(const BBox3& bounds, const BBox3& referenceBounds) const {
+            return m_mapView->pasteObjectsDelta(bounds, referenceBounds);
+        }
+        
+        void SwitchableMapViewContainer::doFocusCameraOnSelection() {
+            m_mapView->focusCameraOnSelection();
+        }
+        
+        void SwitchableMapViewContainer::doMoveCameraToPosition(const Vec3& position) {
+            m_mapView->moveCameraToPosition(position);
+        }
+        
+        void SwitchableMapViewContainer::doMoveCameraToCurrentTracePoint() {
+            m_mapView->moveCameraToCurrentTracePoint();
         }
 
         void SwitchableMapViewContainer::doFlashSelection() {

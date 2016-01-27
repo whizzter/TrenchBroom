@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__RenderService__
-#define __TrenchBroom__RenderService__
+#ifndef TrenchBroom_RenderService
+#define TrenchBroom_RenderService
 
 #include "AttrString.h"
 #include "TrenchBroom.h"
@@ -56,7 +56,9 @@ namespace TrenchBroom {
             void setBackgroundColor(const Color& backgroundColor);
             void setLineWidth(float lineWidth);
             
+            void renderString(const AttrString& string, const Vec3f& position);
             void renderString(const AttrString& string, const TextAnchor& position);
+            void renderStringOnTop(const AttrString& string, const Vec3f& position);
             void renderStringOnTop(const AttrString& string, const TextAnchor& position);
             
             void renderPointHandles(const Vec3f::List& positions);
@@ -66,6 +68,9 @@ namespace TrenchBroom {
             void renderLine(const Vec3f& start, const Vec3f& end);
             void renderLines(const Vec3f::List& positions);
             void renderCoordinateSystem(const BBox3f& bounds);
+            
+            void renderPolygonOutline(const Vec3f::List& positions);
+            void renderFilledPolygon(const Vec3f::List& positions);
             
             void renderBounds(const BBox3f& bounds);
             
@@ -80,4 +85,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__RenderService__) */
+#endif /* defined(TrenchBroom_RenderService) */

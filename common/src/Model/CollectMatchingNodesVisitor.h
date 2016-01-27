@@ -17,9 +17,10 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__CollectMatchingNodesVisitor__
-#define __TrenchBroom__CollectMatchingNodesVisitor__
+#ifndef TrenchBroom_CollectMatchingNodesVisitor
+#define TrenchBroom_CollectMatchingNodesVisitor
 
+#include "CollectionUtils.h"
 #include "Model/NodeVisitor.h"
 #include "Model/Brush.h"
 #include "Model/Entity.h"
@@ -55,7 +56,7 @@ namespace TrenchBroom {
             void addNode(Node* node);
         };
         
-        template <typename P, typename C, typename S = NeverStopRecursion>
+        template <typename P, typename C = StandardNodeCollectionStrategy, typename S = NeverStopRecursion>
         class CollectMatchingNodesVisitor : public C, public MatchingNodeVisitor<P,S> {
         public:
             CollectMatchingNodesVisitor(const P& p = P(), const S& s = S()) : MatchingNodeVisitor<P,S>(p, s) {}
@@ -66,7 +67,20 @@ namespace TrenchBroom {
             void doVisit(Entity* entity) { C::addNode(entity); }
             void doVisit(Brush* brush)   { C::addNode(brush);  }
         };
+
+        template <typename V, typename I>
+        Model::NodeList collectMatchingNodes(I cur, I end, Node* root) {
+            NodeList result;
+            while (cur != end) {
+                V visitor(*cur);
+                root->acceptAndRecurse(visitor);
+                result = VectorUtils::setUnion(result, visitor.nodes());
+                ++cur;
+            }
+            return result;
+        }
+        
     }
 }
 
-#endif /* defined(__TrenchBroom__CollectMatchingNodesVisitor__) */
+#endif /* defined(TrenchBroom_CollectMatchingNodesVisitor) */

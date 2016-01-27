@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__SelectionTool__
-#define __TrenchBroom__SelectionTool__
+#ifndef TrenchBroom_SelectionTool
+#define TrenchBroom_SelectionTool
 
 #include "Model/Hit.h"
 #include "View/Tool.h"
@@ -50,6 +50,10 @@ namespace TrenchBroom {
             
             const Model::Hit& firstHit(const InputState& inputState, Model::Hit::HitType type) const;
             
+            void doMouseScroll(const InputState& inputState);
+            void adjustGrid(const InputState& inputState);
+            void drillSelection(const InputState& inputState);
+
             bool doStartMouseDrag(const InputState& inputState);
             bool doMouseDrag(const InputState& inputState);
             void doEndMouseDrag(const InputState& inputState);
@@ -62,4 +66,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__SelectionTool__) */
+#endif /* defined(TrenchBroom_SelectionTool) */

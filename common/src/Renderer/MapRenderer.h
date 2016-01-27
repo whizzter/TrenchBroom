@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__MapRenderer__
-#define __TrenchBroom__MapRenderer__
+#ifndef TrenchBroom_MapRenderer
+#define TrenchBroom_MapRenderer
 
 #include "Color.h"
 #include "Model/ModelTypes.h"
@@ -51,23 +51,16 @@ namespace TrenchBroom {
             typedef std::map<Model::Layer*, ObjectRenderer*> RendererMap;
             
             View::MapDocumentWPtr m_document;
-            
-            RendererMap m_layerRenderers;
+
+            ObjectRenderer* m_defaultRenderer;
             ObjectRenderer* m_selectionRenderer;
             ObjectRenderer* m_lockedRenderer;
             EntityLinkRenderer* m_entityLinkRenderer;
-            
-            class HandleSelectedNode;
-            class UpdateSelectedNode;
-            class UpdateNode;
-            class UpdateVisibility;
-            class UpdateLocking;
-            class AddNode;
-            class RemoveNode;
         public:
             MapRenderer(View::MapDocumentWPtr document);
             ~MapRenderer();
         private:
+            static ObjectRenderer* createDefaultRenderer(View::MapDocumentWPtr document);
             static ObjectRenderer* createSelectionRenderer(View::MapDocumentWPtr document);
             static ObjectRenderer* createLockRenderer(View::MapDocumentWPtr document);
             void clear();
@@ -79,22 +72,32 @@ namespace TrenchBroom {
         private:
             void commitPendingChanges();
             void setupGL(RenderBatch& renderBatch);
-            void renderLayers(RenderContext& renderContext, RenderBatch& renderBatch);
+            void renderDefault(RenderContext& renderContext, RenderBatch& renderBatch);
             void renderSelection(RenderContext& renderContext, RenderBatch& renderBatch);
             void renderLocked(RenderContext& renderContext, RenderBatch& renderBatch);
             void renderEntityLinks(RenderContext& renderContext, RenderBatch& renderBatch);
             
             void setupRenderers();
-            void setupLayerRenderers();
-            void setupLayerRenderer(ObjectRenderer* renderer);
+            void setupDefaultRenderer(ObjectRenderer* renderer);
             void setupSelectionRenderer(ObjectRenderer* renderer);
             void setupLockedRenderer(ObjectRenderer* renderer);
             void setupEntityLinkRenderer();
 
-            void invalidateLayerRenderers();
-            void invalidateSelectionRenderer();
-            void invalidateLockedRenderer();
+            typedef enum {
+                Renderer_Default            = 1,
+                Renderer_Selection          = 2,
+                Renderer_Locked             = 4,
+                Renderer_Default_Selection  = Renderer_Default | Renderer_Selection,
+                Renderer_Default_Locked     = Renderer_Default | Renderer_Locked,
+                Renderer_All                = Renderer_Default | Renderer_Selection | Renderer_Locked
+            } Renderer;
+            
+            class CollectRenderableNodes;
+            
+            void updateRenderers(Renderer renderers);
+            void invalidateRenderers(Renderer renderers);
             void invalidateEntityLinkRenderer();
+            void reloadEntityModels();
         private: // notification
             void bindObservers();
             void unbindObservers();
@@ -103,11 +106,14 @@ namespace TrenchBroom {
             void documentWasNewedOrLoaded(View::MapDocument* document);
             
             void nodesWereAdded(const Model::NodeList& nodes);
-            void nodesWillBeRemoved(const Model::NodeList& nodes);
+            void nodesWereRemoved(const Model::NodeList& nodes);
             void nodesDidChange(const Model::NodeList& nodes);
             
             void nodeVisibilityDidChange(const Model::NodeList& nodes);
             void nodeLockingDidChange(const Model::NodeList& nodes);
+            
+            void groupWasOpened(Model::Group* group);
+            void groupWasClosed(Model::Group* group);
             
             void brushFacesDidChange(const Model::BrushFaceList& faces);
             
@@ -126,4 +132,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__MapRenderer__) */
+#endif /* defined(TrenchBroom_MapRenderer) */

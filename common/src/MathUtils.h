@@ -35,7 +35,8 @@ namespace Math {
         }
         
         static T pointStatusEpsilon() {
-            static const T value = static_cast<T>(0.01);
+            // static const T value = static_cast<T>(0.01);
+            static const T value = static_cast<T>(0.0001); // this is what tyrbsp uses
             return value;
         }
         
@@ -45,7 +46,7 @@ namespace Math {
         }
         
         static T colinearEpsilon() {
-            static const T value = static_cast<T>(0.01);
+            static const T value = static_cast<T>(0.00001); // this value seems to hit a sweet spot in relation to the point status epsilon
             return value;
         }
         
@@ -184,13 +185,31 @@ namespace Math {
             return r / m;
         return v;
     }
+
+    template <typename T>
+    T roundDownToMultiple(const T v, const T m) {
+        return down(v / m) * m;
+    }
     
     template <typename T>
-    T remainder(const T v1, const T v2) {
-        const T n = down(v1 / v2);
-        return v1 - n * v2;
+    T roundUpToMultiple(const T v, const T m) {
+        return up(v / m) * m;
+    }
+    
+    template <typename T>
+    T roundToMultiple(const T v, const T m) {
+        const T d = roundDownToMultiple(v, m);
+        const T u = roundUpToMultiple(v, m);
+        if (Math::abs(d - v) < Math::abs(u - v))
+            return d;
+        return u;
     }
 
+    template <typename T>
+    bool one(const T v, const T epsilon = Constants<T>::almostZero()) {
+        return Math::abs(v - static_cast<T>(1.0)) <= epsilon;
+    }
+    
     template <typename T>
     bool zero(const T v, const T epsilon = Constants<T>::almostZero()) {
         return abs(v) <= epsilon;
@@ -300,6 +319,24 @@ namespace Math {
         
         n = n << 1;
         return n;
+    }
+    
+    template <typename T>
+    T normalizeRadians(T angle) {
+        static const T z = static_cast<T>(0.0);
+        static const T o = Constants<T>::twoPi();
+        while (angle < z)
+            angle += o;
+        return mod(angle, o);
+    }
+    
+    template <typename T>
+    T normalizeDegrees(T angle) {
+        static const T z = static_cast<T>(0.0);
+        static const T o = static_cast<T>(360.0);
+        while (angle < z)
+            angle += o;
+        return mod(angle, o);
     }
     
     template <typename T, bool Abs>

@@ -27,6 +27,7 @@
 #include "IO/DiskFileSystem.h"
 #include "IO/FgdParser.h"
 #include "IO/FileSystem.h"
+#include "IO/IOUtils.h"
 #include "IO/MapParser.h"
 #include "IO/MdlParser.h"
 #include "IO/Md2Parser.h"
@@ -40,6 +41,8 @@
 #include "Model/World.h"
 
 #include "Exceptions.h"
+
+#include <cstdio>
 
 namespace TrenchBroom {
     namespace Model {
@@ -85,14 +88,20 @@ namespace TrenchBroom {
             return new World(format, brushContentTypeBuilder(), worldBounds);
         }
         
-        World* GameImpl::doLoadMap(const BBox3& worldBounds, const IO::Path& path, Logger* logger) const {
+        World* GameImpl::doLoadMap(const MapFormat::Type format, const BBox3& worldBounds, const IO::Path& path, Logger* logger) const {
             const IO::MappedFile::Ptr file = IO::Disk::openFile(IO::Disk::fixPath(path));
             IO::WorldReader reader(file->begin(), file->end(), brushContentTypeBuilder(), logger);
-            return reader.read(worldBounds);
+            return reader.read(format, worldBounds);
         }
         
         void GameImpl::doWriteMap(World* world, const IO::Path& path) const {
-            IO::NodeWriter writer(world, path, true);
+            const String mapFormatName = formatName(world->format());
+            
+            IO::OpenFile openFile(path, true);
+            FILE* stream = openFile.file();
+            IO::writeGameComment(stream, gameName(), mapFormatName);
+            
+            IO::NodeWriter writer(world, stream);
             writer.writeMap();
         }
 
@@ -156,7 +165,9 @@ namespace TrenchBroom {
                 return;
             
             const String value = StringUtils::join(collections, ';');
-            world->addOrUpdateAttribute(attribute, value);
+            // to avoid backslashes being misinterpreted as escape sequences
+            const String formatted = StringUtils::replaceAll(value, "\\", "/");
+            world->addOrUpdateAttribute(attribute, formatted);
         }
 
         Assets::TextureCollection* GameImpl::doLoadTextureCollection(const Assets::TextureCollectionSpec& spec) const {
@@ -177,19 +188,19 @@ namespace TrenchBroom {
             return false;
         }
 
-        Assets::EntityDefinitionList GameImpl::doLoadEntityDefinitions(const IO::Path& path) const {
+        Assets::EntityDefinitionList GameImpl::doLoadEntityDefinitions(IO::ParserStatus& status, const IO::Path& path) const {
             const String extension = path.extension();
             const Color& defaultColor = m_config.entityConfig().defaultColor;
             
             if (StringUtils::caseInsensitiveEqual("fgd", extension)) {
                 const IO::MappedFile::Ptr file = IO::Disk::openFile(IO::Disk::fixPath(path));
                 IO::FgdParser parser(file->begin(), file->end(), defaultColor);
-                return parser.parseDefinitions();
+                return parser.parseDefinitions(status);
             }
             if (StringUtils::caseInsensitiveEqual("def", extension)) {
                 const IO::MappedFile::Ptr file = IO::Disk::openFile(IO::Disk::fixPath(path));
                 IO::DefParser parser(file->begin(), file->end(), defaultColor);
-                return parser.parseDefinitions();
+                return parser.parseDefinitions(status);
             }
             throw GameException("Unknown entity definition format: '" + path.asString() + "'");
         }

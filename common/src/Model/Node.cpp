@@ -50,12 +50,25 @@ namespace TrenchBroom {
             return doGetName();
         }
 
+        const BBox3& Node::bounds() const {
+            return doGetBounds();
+        }
+
         Node* Node::clone(const BBox3& worldBounds) const {
             return doClone(worldBounds);
         }
 
+        Node* Node::cloneRecursively(const BBox3& worldBounds) const {
+            return doCloneRecursively(worldBounds);
+        }
+
         NodeSnapshot* Node::takeSnapshot() {
             return doTakeSnapshot();
+        }
+        
+        void Node::cloneAttributes(Node* node) const {
+            node->setVisiblityState(m_visibilityState);
+            node->setLockState(m_lockState);
         }
         
         NodeList Node::clone(const BBox3& worldBounds, const NodeList& nodes) {
@@ -145,11 +158,12 @@ namespace TrenchBroom {
             assert(child->parent() == NULL);
             assert(canAddChild(child));
 
-            nodeWillChange();
+            childWillBeAdded(child);
+            // nodeWillChange();
             m_children.push_back(child);
             child->setParent(this);
             childWasAdded(child);
-            nodeDidChange();
+            // nodeDidChange();
         }
 
         void Node::doRemoveChild(Node* child) {
@@ -158,15 +172,20 @@ namespace TrenchBroom {
             assert(canRemoveChild(child));
 
             childWillBeRemoved(child);
-            nodeWillChange();
+            // nodeWillChange();
             child->setParent(NULL);
             VectorUtils::erase(m_children, child);
             childWasRemoved(child);
-            nodeDidChange();
+            // nodeDidChange();
         }
         
         void Node::clearChildren() {
             VectorUtils::clearAndDelete(m_children);
+        }
+
+        void Node::childWillBeAdded(Node* node) {
+            doChildWillBeAdded(node);
+            descendantWillBeAdded(this, node);
         }
 
         void Node::childWasAdded(Node* node) {
@@ -184,25 +203,34 @@ namespace TrenchBroom {
             descendantWasRemoved(this, node);
         }
         
+        void Node::descendantWillBeAdded(Node* newParent, Node* node) {
+            doDescendantWillBeAdded(newParent, node);
+            if (shouldPropagateDescendantEvents() && m_parent != NULL)
+                m_parent->descendantWillBeAdded(newParent, node);
+        }
 
         void Node::descendantWasAdded(Node* node) {
             doDescendantWasAdded(node);
-            if (m_parent != NULL)
+            if (shouldPropagateDescendantEvents() && m_parent != NULL)
                 m_parent->descendantWasAdded(node);
             invalidateIssues();
         }
         
         void Node::descendantWillBeRemoved(Node* node) {
             doDescendantWillBeRemoved(node);
-            if (m_parent != NULL)
+            if (shouldPropagateDescendantEvents() && m_parent != NULL)
                 m_parent->descendantWillBeRemoved(node);
         }
 
         void Node::descendantWasRemoved(Node* oldParent, Node* node) {
             doDescendantWasRemoved(oldParent, node);
-            if (m_parent != NULL)
+            if (shouldPropagateDescendantEvents() && m_parent != NULL)
                 m_parent->descendantWasRemoved(oldParent, node);
             invalidateIssues();
+        }
+
+        bool Node::shouldPropagateDescendantEvents() const {
+            return doShouldPropagateDescendantEvents();
         }
 
         void Node::incDescendantCount(const size_t delta) {
@@ -285,6 +313,12 @@ namespace TrenchBroom {
             m_node->nodeDidChange();
         }
 
+        void Node::nodeBoundsDidChange() {
+            doNodeBoundsDidChange();
+            if (m_parent != NULL)
+                m_parent->childBoundsDidChange(this);
+        }
+        
         void Node::childWillChange(Node* node) {
             doChildWillChange(node);
             descendantWillChange(node);
@@ -297,16 +331,20 @@ namespace TrenchBroom {
 
         void Node::descendantWillChange(Node* node) {
             doDescendantWillChange(node);
-            if (m_parent != NULL)
+            if (shouldPropagateDescendantEvents() && m_parent != NULL)
                 m_parent->descendantWillChange(node);
             invalidateIssues();
         }
         
         void Node::descendantDidChange(Node* node) {
             doDescendantDidChange(node);
-            if (m_parent != NULL)
+            if (shouldPropagateDescendantEvents() && m_parent != NULL)
                 m_parent->descendantDidChange(node);
             invalidateIssues();
+        }
+
+        void Node::childBoundsDidChange(Node* node) {
+            doChildBoundsDidChange(node);
         }
 
         bool Node::selected() const {
@@ -408,11 +446,16 @@ namespace TrenchBroom {
                     return false;
                 case Visibility_Shown:
                     return true;
+                switchDefault()
             }
         }
         
+        bool Node::shown() const {
+            return m_visibilityState == Visibility_Shown;
+        }
+
         bool Node::hidden() const {
-            return !visible();
+            return m_visibilityState == Visibility_Hidden;
         }
         
         VisibilityState Node::visibilityState() const {
@@ -427,6 +470,12 @@ namespace TrenchBroom {
             return false;
         }
 
+        bool Node::ensureVisible() {
+            if (!visible())
+                return setVisiblityState(Visibility_Shown);
+            return false;
+        }
+
         bool Node::editable() const {
             switch (m_lockState) {
                 case Lock_Inherited:
@@ -435,6 +484,7 @@ namespace TrenchBroom {
                     return false;
                 case Lock_Unlocked:
                     return true;
+		switchDefault()
             }
         }
         
@@ -528,27 +578,39 @@ namespace TrenchBroom {
             doRemoveFromIndex(attributable, name, value);
         }
 
+        Node* Node::doCloneRecursively(const BBox3& worldBounds) const {
+            Node* clone = Node::clone(worldBounds);
+            clone->addChildren(Node::clone(worldBounds, children()));
+            return clone;
+        }
+
         NodeSnapshot* Node::doTakeSnapshot() {
             return NULL;
         }
 
+        void Node::doChildWillBeAdded(Node* node) {}
         void Node::doChildWasAdded(Node* node) {}
         void Node::doChildWillBeRemoved(Node* node) {}
         void Node::doChildWasRemoved(Node* node) {}
 
+        void Node::doDescendantWillBeAdded(Node* newParent, Node* node) {}
         void Node::doDescendantWasAdded(Node* node) {}
         void Node::doDescendantWillBeRemoved(Node* node) {}
         void Node::doDescendantWasRemoved(Node* oldParent, Node* node) {}
+        bool Node::doShouldPropagateDescendantEvents() const { return true; }
 
         void Node::doParentWillChange() {}
         void Node::doParentDidChange() {}
         void Node::doAncestorWillChange() {}
         void Node::doAncestorDidChange() {}
 
+        void Node::doNodeBoundsDidChange() {}
+        void Node::doChildBoundsDidChange(Node* node) {}
+
         void Node::doChildWillChange(Node* node) {}
         void Node::doChildDidChange(Node* node) {}
         void Node::doDescendantWillChange(Node* node) {}
-        void Node::doDescendantDidChange(Node* node) {}
+        void Node::doDescendantDidChange(Node* node)  {}
 
         void Node::doFindAttributableNodesWithAttribute(const AttributeName& name, const AttributeValue& value, AttributableNodeList& result) const {
             if (m_parent != NULL)

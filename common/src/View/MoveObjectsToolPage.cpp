@@ -48,17 +48,21 @@ namespace TrenchBroom {
             sizer->AddSpacer(LayoutConstants::NarrowHMargin);
             sizer->Add(m_offset, 0, wxALIGN_CENTER_VERTICAL);
             sizer->AddSpacer(LayoutConstants::NarrowHMargin);
-            sizer->Add(m_button, 0);
+            sizer->Add(m_button, 0, wxALIGN_CENTER_VERTICAL);
             
             SetSizer(sizer);
         }
 
         void MoveObjectsToolPage::OnUpdateButton(wxUpdateUIEvent& event) {
+            if (IsBeingDeleted()) return;
+
             MapDocumentSPtr document = lock(m_document);
             event.Enable(document->hasSelectedNodes());
         }
 
         void MoveObjectsToolPage::OnApply(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             const Vec3 delta = Vec3::parse(m_offset->GetValue().ToStdString());
 
             MapDocumentSPtr document = lock(m_document);

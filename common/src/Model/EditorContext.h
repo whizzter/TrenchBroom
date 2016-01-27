@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__EditorContext__
-#define __TrenchBroom__EditorContext__
+#ifndef TrenchBroom_EditorContext
+#define TrenchBroom_EditorContext
 
 #include "Notifier.h"
 #include "Model/BrushContentType.h"
@@ -46,6 +46,7 @@ namespace TrenchBroom {
             EntityLinkMode m_entityLinkMode;
             
             bool m_textureLock;
+            bool m_blockSelection;
             
             Model::Group* m_currentGroup;
         public:
@@ -62,6 +63,7 @@ namespace TrenchBroom {
             Model::BrushContentType::FlagType hiddenBrushContentTypes() const;
             void setHiddenBrushContentTypes(Model::BrushContentType::FlagType brushContentTypes);
             
+            bool entityDefinitionHidden(const Model::AttributableNode* entity) const;
             bool entityDefinitionHidden(const Assets::EntityDefinition* definition) const;
             void setEntityDefinitionHidden(const Assets::EntityDefinition* definition, bool hidden);
             
@@ -70,6 +72,9 @@ namespace TrenchBroom {
             
             bool textureLock() const;
             void setTextureLock(bool textureLock);
+            
+            bool blockSelection() const;
+            void setBlockSelection(bool blockSelection);
         public:
             Model::Group* currentGroup() const;
             void pushGroup(Model::Group* group);
@@ -99,6 +104,8 @@ namespace TrenchBroom {
             bool selectable(const Model::Entity* entity) const;
             bool selectable(const Model::Brush* brush) const;
             bool selectable(const Model::BrushFace* face) const;
+            
+            bool canChangeSelection() const;
         private:
             EditorContext(const EditorContext&);
             EditorContext& operator=(const EditorContext&);
@@ -106,4 +113,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__EditorContext__) */
+#endif /* defined(TrenchBroom_EditorContext) */

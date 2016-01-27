@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__Object__
-#define __TrenchBroom__Object__
+#ifndef TrenchBroom_Object
+#define TrenchBroom_Object
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
@@ -36,8 +36,6 @@ namespace TrenchBroom {
         public:
             virtual ~Object();
             
-            const BBox3& bounds() const;
-        
             Node* container() const;
             Layer* layer() const;
             Group* group() const;
@@ -46,8 +44,6 @@ namespace TrenchBroom {
             bool contains(const Node* object) const;
             bool intersects(const Node* object) const;
         private: // subclassing interface
-            virtual const BBox3& doGetBounds() const = 0;
-            
             virtual Node* doGetContainer() const = 0;
             virtual Layer* doGetLayer() const = 0;
             virtual Group* doGetGroup() const = 0;
@@ -60,4 +56,4 @@ namespace TrenchBroom {
 }
 
 
-#endif /* defined(__TrenchBroom__Object__) */
+#endif /* defined(TrenchBroom_Object) */

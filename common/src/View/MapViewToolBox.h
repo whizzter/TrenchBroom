@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__MapViewToolBox__
-#define __TrenchBroom__MapViewToolBox__
+#ifndef TrenchBroom_MapViewToolBox
+#define TrenchBroom_MapViewToolBox
 
 #include "View/ToolBox.h"
 #include "View/ViewTypes.h"
@@ -32,19 +32,24 @@ namespace TrenchBroom {
     
     namespace View {
         class ClipTool;
-        class CreateBrushTool;
+        class CreateComplexBrushTool;
         class CreateEntityTool;
+        class CreateSimpleBrushTool;
         class MoveObjectsTool;
         class ResizeBrushesTool;
         class RotateObjectsTool;
         class SelectionTool;
         class VertexTool;
+        class Selection;
 
         class MapViewToolBox : public ToolBox {
         private:
+            MapDocumentWPtr m_document;
+            
             ClipTool* m_clipTool;
-            CreateBrushTool* m_createBrushTool;
+            CreateComplexBrushTool* m_createComplexBrushTool;
             CreateEntityTool* m_createEntityTool;
+            CreateSimpleBrushTool* m_createSimpleBrushTool;
             MoveObjectsTool* m_moveObjectsTool;
             ResizeBrushesTool* m_resizeBrushesTool;
             RotateObjectsTool* m_rotateObjectsTool;
@@ -55,22 +60,23 @@ namespace TrenchBroom {
             ~MapViewToolBox();
         public: // tools
             ClipTool* clipTool();
-            CreateBrushTool* createBrushTool();
+            CreateComplexBrushTool* createComplexBrushTool();
             CreateEntityTool* createEntityTool();
+            CreateSimpleBrushTool* createSimpleBrushTool();
             MoveObjectsTool* moveObjectsTool();
             ResizeBrushesTool* resizeBrushesTool();
             RotateObjectsTool* rotateObjectsTool();
             SelectionTool* selectionTool();
             VertexTool* vertexTool();
             
-            void toggleCreateBrushTool();
-            bool createBrushToolActive() const;
+            void toggleCreateComplexBrushTool();
+            bool createComplexBrushToolActive() const;
             
             void toggleClipTool();
             bool clipToolActive() const;
             void toggleClipSide();
             void performClip();
-            void deleteLastClipPoint();
+            void removeLastClipPoint();
             
             void toggleRotateObjectsTool();
             bool rotateObjectsToolActive() const;
@@ -85,12 +91,14 @@ namespace TrenchBroom {
             void createTools(MapDocumentWPtr document, wxBookCtrlBase* bookCtrl);
             void destroyTools();
         private: // notification
+            void registerTool(Tool* tool, wxBookCtrlBase* bookCtrl);
             void bindObservers();
             void unbindObservers();
             void toolActivated(Tool* tool);
             void toolDeactivated(Tool* tool);
+            void updateEditorContext();
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__MapViewToolBox__) */
+#endif /* defined(TrenchBroom_MapViewToolBox) */

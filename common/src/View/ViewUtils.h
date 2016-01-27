@@ -17,10 +17,11 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__ViewUtils__
-#define __TrenchBroom__ViewUtils__
+#ifndef TrenchBroom_ViewUtils
+#define TrenchBroom_ViewUtils
 
 #include "View/ViewTypes.h"
+#include "StringUtils.h"
 
 #include <wx/wx.h>
 
@@ -46,7 +47,9 @@ namespace TrenchBroom {
         bool loadEntityDefinitionFile(MapDocumentWPtr document, wxWindow* parent, const wxString& wxPath);
         bool containsLoadableEntityDefinitionFile(MapDocumentWPtr document, const wxArrayString& wxPaths);
         size_t loadEntityDefinitionFile(MapDocumentWPtr document, wxWindow* parent, const wxArrayString& wxPaths);
+        
+        String queryGroupName(wxWindow* parent);
     }
 }
 
-#endif /* defined(__TrenchBroom__ViewUtils__) */
+#endif /* defined(TrenchBroom_ViewUtils) */

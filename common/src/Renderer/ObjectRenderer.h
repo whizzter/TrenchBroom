@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__ObjectRenderer__
-#define __TrenchBroom__ObjectRenderer__
+#ifndef TrenchBroom_ObjectRenderer
+#define TrenchBroom_ObjectRenderer
 
 #include "Color.h"
 #include "Model/ModelTypes.h"
@@ -47,19 +47,10 @@ namespace TrenchBroom {
             m_entityRenderer(entityModelManager, editorContext),
             m_brushRenderer(brushFilter) {}
         public: // object management
-            void addObjects(const Model::NodeList& nodes);
-            void addObject(Model::Node* object);
-            
-            void removeObjects(const Model::NodeList& nodes);
-            void removeObject(Model::Node* object);
-
-            void updateObjects(const Model::NodeList& nodes);
-            void updateObject(Model::Node* object);
-            
-            void updateBrushFaces(const Model::BrushFaceList& faces);
-            
+            void setObjects(const Model::GroupList& groups, const Model::EntityList& entities, const Model::BrushList& brushes);
             void invalidate();
             void clear();
+            void reloadModels();
         public: // configuration
             void setShowOverlays(bool showOverlays);
             void setOverlayTextColor(const Color& overlayTextColor);
@@ -95,4 +86,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__ObjectRenderer__) */
+#endif /* defined(TrenchBroom_ObjectRenderer) */

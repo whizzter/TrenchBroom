@@ -17,13 +17,12 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__MoveToolHelper__
-#define __TrenchBroom__MoveToolHelper__
+#ifndef TrenchBroom_MoveToolHelper
+#define TrenchBroom_MoveToolHelper
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
 #include "Renderer/EdgeRenderer.h"
-#include "Renderer/MoveIndicatorRenderer.h"
 #include "View/ToolAdapter.h"
 
 namespace TrenchBroom {
@@ -67,52 +66,45 @@ namespace TrenchBroom {
         private:
             MoveToolDelegate* m_delegate;
             Vec3f::List m_trace;
-            Renderer::EdgeRenderer m_traceRenderer;
         protected:
-            MoveToolHelper(MoveToolDelegate* delegate);
+            MoveToolHelper(PlaneDragPolicy* policy, MoveToolDelegate* delegate);
         public:
             virtual ~MoveToolHelper();
             
             bool handleMove(const InputState& inputState) const;
-            bool startPlaneDrag(const InputState& inputState, Plane3& plane, Vec3& initialPoint);
-            bool planeDrag(const InputState& inputState, const Vec3& lastPoint, const Vec3& curPoint, Vec3& refPoint);
-            void endPlaneDrag(const InputState& inputState);
-            void cancelPlaneDrag();
-            void resetPlane(const InputState& inputState, Plane3& plane, Vec3& initialPoint);
-            void render(const InputState& inputState, bool dragging, Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch);
+            bool doStartPlaneDrag(const InputState& inputState, Plane3& plane, Vec3& initialPoint);
+            bool doPlaneDrag(const InputState& inputState, const Vec3& lastPoint, const Vec3& curPoint, Vec3& refPoint);
+            void doEndPlaneDrag(const InputState& inputState);
+            void doCancelPlaneDrag();
+            void doResetPlane(const InputState& inputState, Plane3& plane, Vec3& initialPoint);
+            void doRender(const InputState& inputState, Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch);
         private:
             Plane3 dragPlane(const InputState& inputState, const Vec3& initialPoint) const;
             void addTracePoint(const Vec3& point);
-            
-            void renderMoveIndicator(const InputState& inputState, Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch);
             void renderMoveTrace(Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch);
         private:
             virtual Plane3 doGetDragPlane(const InputState& inputState, const Vec3& initialPoint) const = 0;
             virtual Vec3 doGetDelta(const Vec3& delta) const = 0;
-            virtual void doRenderMoveIndicator(const InputState& inputState, Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch) = 0;
         };
         
         class MoveToolHelper2D : public MoveToolHelper {
         public:
-            MoveToolHelper2D(MoveToolDelegate* delegate);
+            MoveToolHelper2D(PlaneDragPolicy* policy, MoveToolDelegate* delegate);
         private:
             Plane3 doGetDragPlane(const InputState& inputState, const Vec3& initialPoint) const;
             Vec3 doGetDelta(const Vec3& delta) const;
-            void doRenderMoveIndicator(const InputState& inputState, Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch);
         };
 
         class MoveToolHelper3D : public MoveToolHelper {
         private:
             MovementRestriction& m_movementRestriction;
         public:
-            MoveToolHelper3D(MoveToolDelegate* delegate, MovementRestriction& movementRestriction);
+            MoveToolHelper3D(PlaneDragPolicy* policy, MoveToolDelegate* delegate, MovementRestriction& movementRestriction);
         private:
             Plane3 doGetDragPlane(const InputState& inputState, const Vec3& initialPoint) const;
             Vec3 doGetDelta(const Vec3& delta) const;
-            void doRenderMoveIndicator(const InputState& inputState, Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch);
-            Renderer::MoveIndicatorRenderer::Direction getDirection() const;
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__MoveToolHelper__) */
+#endif /* defined(TrenchBroom_MoveToolHelper) */

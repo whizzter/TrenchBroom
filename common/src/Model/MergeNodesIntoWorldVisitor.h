@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__MergeNodesIntoWorldVisitor__
-#define __TrenchBroom__MergeNodesIntoWorldVisitor__
+#ifndef TrenchBroom_MergeNodesIntoWorldVisitor
+#define TrenchBroom_MergeNodesIntoWorldVisitor
 
 #include "Model/ModelTypes.h"
 #include "Model/NodeVisitor.h"
@@ -31,6 +31,8 @@ namespace TrenchBroom {
             Layer* m_layer;
             
             ParentChildrenMap m_result;
+            mutable NodeList m_nodesToDetach;
+            mutable NodeList m_nodesToDelete;
         public:
             MergeNodesIntoWorldVisitor(World* world, Layer* layer);
             
@@ -45,8 +47,11 @@ namespace TrenchBroom {
             void addNode(Node* node);
             void deleteNode(Node* node);
             void detachNode(Node* node);
+            
+            void deleteNodes() const;
+            void detachNodes() const;
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__MergeNodesIntoWorldVisitor__) */
+#endif /* defined(TrenchBroom_MergeNodesIntoWorldVisitor) */

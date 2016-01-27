@@ -17,12 +17,14 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__NodeWriter__
-#define __TrenchBroom__NodeWriter__
+#ifndef TrenchBroom_NodeWriter
+#define TrenchBroom_NodeWriter
 
 #include "IO/NodeSerializer.h"
 #include "Model/MapFormat.h"
 #include "Model/ModelTypes.h"
+
+#include <cstdio>
 
 namespace TrenchBroom {
     namespace IO {
@@ -38,7 +40,7 @@ namespace TrenchBroom {
             Model::World* m_world;
             NodeSerializer::Ptr m_serializer;
         public:
-            NodeWriter(Model::World* world, const Path& path, bool overwrite);
+            NodeWriter(Model::World* world, FILE* stream);
             NodeWriter(Model::World* world, std::ostream& stream);
             
             void writeMap();
@@ -57,4 +59,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__NodeWriter__) */
+#endif /* defined(TrenchBroom_NodeWriter) */

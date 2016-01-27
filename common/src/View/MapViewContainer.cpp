@@ -19,6 +19,8 @@
 
 #include "MapViewContainer.h"
 
+#include "View/MapViewBase.h"
+
 namespace TrenchBroom {
     namespace View {
         MapViewContainer::MapViewContainer(wxWindow* parent) :
@@ -26,5 +28,40 @@ namespace TrenchBroom {
         MapView() {}
         
         MapViewContainer::~MapViewContainer() {}
+
+        bool MapViewContainer::canMaximizeCurrentView() const {
+            return doCanMaximizeCurrentView();
+        }
+        
+        bool MapViewContainer::currentViewMaximized() const {
+            return doCurrentViewMaximized();
+        }
+        
+        void MapViewContainer::toggleMaximizeCurrentView() {
+            doToggleMaximizeCurrentView();
+        }
+
+        bool MapViewContainer::doCanFlipObjects() const {
+            MapView* current = currentMapView();
+            if (current == NULL)
+                return false;
+            return current->canFlipObjects();
+        }
+        
+        void MapViewContainer::doFlipObjects(const Math::Direction direction) {
+            MapView* current = currentMapView();
+            assert(current != NULL);
+            current->flipObjects(direction);
+        }
+
+        Vec3 MapViewContainer::doGetPasteObjectsDelta(const BBox3& bounds, const BBox3& referenceBounds) const {
+            MapView* current = currentMapView();
+            assert(current != NULL);
+            return current->pasteObjectsDelta(bounds, referenceBounds);
+        }
+
+        MapView* MapViewContainer::currentMapView() const {
+            return doGetCurrentMapView();
+        }
     }
 }

@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__ImageListBox__
-#define __TrenchBroom__ImageListBox__
+#ifndef TrenchBroom_ImageListBox
+#define TrenchBroom_ImageListBox
 
 #include <wx/vlbox.h>
 
@@ -34,6 +34,7 @@ namespace TrenchBroom {
             
             size_t selection() const;
             bool hasSelection() const;
+            wxCoord itemHeight() const;
             
             void SetItemCount(size_t itemCount);
         private:
@@ -53,4 +54,4 @@ namespace TrenchBroom {
 }
 
 
-#endif /* defined(__TrenchBroom__ImageListBox__) */
+#endif /* defined(TrenchBroom_ImageListBox) */

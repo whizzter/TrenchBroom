@@ -27,8 +27,8 @@ namespace TrenchBroom {
     namespace View {
         const Command::CommandType DuplicateNodesCommand::Type = Command::freeType();
 
-        DuplicateNodesCommand* DuplicateNodesCommand::duplicate() {
-            return new DuplicateNodesCommand();
+        DuplicateNodesCommand::Ptr DuplicateNodesCommand::duplicate() {
+            return Ptr(new DuplicateNodesCommand());
         }
 
         DuplicateNodesCommand::DuplicateNodesCommand() :
@@ -47,7 +47,7 @@ namespace TrenchBroom {
             Model::NodeList::const_iterator it, end;
             for (it = m_previouslySelectedNodes.begin(), end = m_previouslySelectedNodes.end(); it != end; ++it) {
                 const Model::Node* original = *it;
-                Model::Node* clone = original->clone(worldBounds);
+                Model::Node* clone = original->cloneRecursively(worldBounds);
 
                 Model::Node* parent = original->parent();
                 if (cloneParent(parent)) {
@@ -104,11 +104,11 @@ namespace TrenchBroom {
             return document->hasSelectedNodes();
         }
         
-        UndoableCommand* DuplicateNodesCommand::doRepeat(MapDocumentCommandFacade* document) const {
-            return new DuplicateNodesCommand();
+        UndoableCommand::Ptr DuplicateNodesCommand::doRepeat(MapDocumentCommandFacade* document) const {
+            return UndoableCommand::Ptr(new DuplicateNodesCommand());
         }
         
-        bool DuplicateNodesCommand::doCollateWith(UndoableCommand* command) {
+        bool DuplicateNodesCommand::doCollateWith(UndoableCommand::Ptr command) {
             return false;
         }
     }

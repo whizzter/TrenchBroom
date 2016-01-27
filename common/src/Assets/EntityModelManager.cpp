@@ -24,13 +24,16 @@
 #include "Logger.h"
 #include "Assets/EntityModel.h"
 #include "IO/EntityModelLoader.h"
-#include "Renderer/TriangleMeshRenderer.h"
+#include "Renderer/TexturedIndexRangeRenderer.h"
 
 namespace TrenchBroom {
     namespace Assets {
-        EntityModelManager::EntityModelManager(Logger* logger) :
+        EntityModelManager::EntityModelManager(Logger* logger, int minFilter, int magFilter) :
         m_logger(logger),
-        m_loader(NULL) {}
+        m_loader(NULL),
+        m_minFilter(minFilter),
+        m_magFilter(magFilter),
+        m_resetTextureMode(false) {}
         
         EntityModelManager::~EntityModelManager() {
             clear();
@@ -49,6 +52,12 @@ namespace TrenchBroom {
                 m_logger->debug("Cleared entity models");
         }
         
+        void EntityModelManager::setTextureMode(const int minFilter, const int magFilter) {
+            m_minFilter = minFilter;
+            m_magFilter = magFilter;
+            m_resetTextureMode = true;
+        }
+
         void EntityModelManager::setLoader(const IO::EntityModelLoader* loader) {
             clear();
             m_loader = loader;
@@ -83,7 +92,7 @@ namespace TrenchBroom {
             }
         }
         
-        Renderer::TexturedTriangleMeshRenderer* EntityModelManager::renderer(const Assets::ModelSpecification& spec) const {
+        Renderer::TexturedIndexRangeRenderer* EntityModelManager::renderer(const Assets::ModelSpecification& spec) const {
             EntityModel* entityModel = model(spec.path);
             if (entityModel == NULL)
                 return NULL;
@@ -95,7 +104,7 @@ namespace TrenchBroom {
             if (m_rendererMismatches.count(spec) > 0)
                 return NULL;
             
-            Renderer::TexturedTriangleMeshRenderer* renderer = entityModel->buildRenderer(spec.skinIndex, spec.frameIndex);
+            Renderer::TexturedIndexRangeRenderer* renderer = entityModel->buildRenderer(spec.skinIndex, spec.frameIndex);
             if (renderer == NULL) {
                 m_rendererMismatches.insert(spec);
                 
@@ -117,15 +126,27 @@ namespace TrenchBroom {
         }
 
         void EntityModelManager::prepare(Renderer::Vbo& vbo) {
+            resetTextureMode();
             prepareModels();
             prepareRenderers(vbo);
         }
 
+        void EntityModelManager::resetTextureMode() {
+            if (m_resetTextureMode) {
+                ModelCache::const_iterator it, end;
+                for (it = m_models.begin(), end = m_models.end(); it != end; ++it) {
+                    EntityModel* model = it->second;
+                    model->setTextureMode(m_minFilter, m_magFilter);
+                }
+                m_resetTextureMode = false;
+            }
+        }
+        
         void EntityModelManager::prepareModels() {
             ModelList::const_iterator it, end;
             for (it = m_unpreparedModels.begin(), end = m_unpreparedModels.end(); it != end; ++it) {
                 Assets::EntityModel* model = *it;
-                model->prepare();
+                model->prepare(m_minFilter, m_magFilter);
             }
             m_unpreparedModels.clear();
         }
@@ -133,7 +154,7 @@ namespace TrenchBroom {
         void EntityModelManager::prepareRenderers(Renderer::Vbo& vbo) {
             RendererList::const_iterator it, end;
             for (it = m_unpreparedRenderers.begin(), end = m_unpreparedRenderers.end(); it != end; ++it) {
-                Renderer::TexturedTriangleMeshRenderer* renderer = *it;
+                Renderer::TexturedIndexRangeRenderer* renderer = *it;
                 renderer->prepare(vbo);
             }
             m_unpreparedRenderers.clear();

@@ -22,7 +22,7 @@
 #include "Preferences.h"
 #include "Assets/Texture.h"
 #include "Model/BrushFace.h"
-#include "Model/BrushVertex.h"
+#include "Model/BrushGeometry.h"
 #include "Model/HitQuery.h"
 #include "Model/ModelTypes.h"
 #include "Model/PickResult.h"
@@ -179,11 +179,12 @@ namespace TrenchBroom {
             // now snap to the vertices
             // TODO: this actually doesn't work because we're snapping to the X or Y coordinate of the vertices
             // instead, we must snap to the edges!
-            const Model::BrushVertexList& vertices = face->vertices();
-            Vec2f distanceInTexCoords = Vec2f::Max;
+            const Model::BrushFace::VertexList vertices = face->vertices();
+            Model::BrushFace::VertexList::const_iterator it, end;
             
-            for (size_t i = 0; i < vertices.size(); ++i)
-                distanceInTexCoords = absMin(distanceInTexCoords, newOriginInTexCoords - Vec2f(w2tTransform * vertices[i]->position));
+            Vec2f distanceInTexCoords = Vec2f::Max;
+            for (it = vertices.begin(), end = vertices.end(); it != end; ++it)
+                distanceInTexCoords = absMin(distanceInTexCoords, Vec2f(w2tTransform * (*it)->position()) - newOriginInTexCoords);
             
             // and to the texture grid
             const Assets::Texture* texture = face->texture();
@@ -192,13 +193,13 @@ namespace TrenchBroom {
             
             // finally snap to the face center
             const Vec2f faceCenter(w2tTransform * face->boundsCenter());
-            distanceInTexCoords = absMin(distanceInTexCoords, newOriginInTexCoords - faceCenter);
+            distanceInTexCoords = absMin(distanceInTexCoords, faceCenter - newOriginInTexCoords);
 
             // now we have a distance in the scaled and translated texture coordinate system
             // so we transform the new position plus distance back to the unscaled and untranslated texture coordinate system
             // and take the actual distance
             const Vec2f distanceInFaceCoords = newOriginInFaceCoords - Vec2f(t2fTransform * Vec3(newOriginInTexCoords + distanceInTexCoords));
-            return m_helper.snapDelta(delta, distanceInFaceCoords);
+            return m_helper.snapDelta(delta, -distanceInFaceCoords);
         }
 
         void UVOriginTool::doEndMouseDrag(const InputState& inputState) {}
@@ -215,11 +216,8 @@ namespace TrenchBroom {
         void UVOriginTool::renderLineHandles(const InputState& inputState, Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch) {
             EdgeVertex::List vertices = getHandleVertices(inputState.pickResult());
             
-            Renderer::EdgeRenderer edgeRenderer(Renderer::VertexArray::swap(GL_LINES, vertices));
-            Renderer::RenderEdges* renderEdges = new Renderer::RenderEdges(Reference::swap(edgeRenderer));
-            renderEdges->setWidth(2.0f);
-            renderEdges->setRenderOccluded();
-            renderBatch.addOneShot(renderEdges);
+            Renderer::DirectEdgeRenderer edgeRenderer(Renderer::VertexArray::swap(vertices), GL_LINES);
+            edgeRenderer.renderOnTop(renderBatch, 0.25f);
         }
 
         UVOriginTool::EdgeVertex::List UVOriginTool::getHandleVertices(const Model::PickResult& pickResult) const {
@@ -243,7 +241,7 @@ namespace TrenchBroom {
             return vertices;
         }
 
-        class UVOriginTool::RenderOrigin : public Renderer::Renderable {
+        class UVOriginTool::RenderOrigin : public Renderer::DirectRenderable {
         private:
             const UVViewHelper& m_helper;
             bool m_highlight;
@@ -259,8 +257,8 @@ namespace TrenchBroom {
                 return Renderer::Circle(radius / zoom, segments, fill);
             }
         private:
-            void doPrepare(Renderer::Vbo& vbo) {
-                m_originHandle.prepare(vbo);
+            void doPrepareVertices(Renderer::Vbo& vertexVbo) {
+                m_originHandle.prepare(vertexVbo);
             }
             
             void doRender(Renderer::RenderContext& renderContext) {

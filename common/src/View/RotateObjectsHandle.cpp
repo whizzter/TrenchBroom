@@ -93,7 +93,7 @@ namespace TrenchBroom {
                 case HitArea_None:
                 case HitArea_Center:
                     return m_position;
-                DEFAULT_SWITCH()
+                switchDefault()
             }
         }
         
@@ -110,7 +110,7 @@ namespace TrenchBroom {
                 case HitArea_None:
                 case HitArea_Center:
                     return Vec3::PosZ;
-                DEFAULT_SWITCH()
+                switchDefault()
             }
         }
         
@@ -125,12 +125,11 @@ namespace TrenchBroom {
                 case HitArea_None:
                 case HitArea_Center:
                     return Vec3::PosZ;
-                DEFAULT_SWITCH()
+                switchDefault()
             }
         }
         
         void RotateObjectsHandle::renderHandle2D(Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch, const HitArea highlight) {
-            
             const Renderer::Camera& camera = renderContext.camera();
             const float radius = static_cast<float>(pref(Preferences::RotateHandleRadius));
             Renderer::RenderService renderService(renderContext, renderBatch);
@@ -154,7 +153,7 @@ namespace TrenchBroom {
                     break;
                 case RotateObjectsHandle::HitArea_None:
                     break;
-                    DEFAULT_SWITCH()
+                    switchDefault()
             };
         }
         
@@ -175,7 +174,7 @@ namespace TrenchBroom {
             renderService.setForegroundColor(pref(Preferences::ZAxisColor));
             renderService.renderCircle(m_position, Math::Axis::AZ, 64, radius, xAxis, yAxis);
 
-            renderService.setForegroundColor(pref(Preferences::HandleColor));
+            /*
             renderService.renderCircle(m_position, Math::Axis::AX, 8, radius,
                                        Quatf(Vec3f::PosX, Math::radians(+15.0f)) * yAxis,
                                        Quatf(Vec3f::PosX, Math::radians(-15.0f)) * yAxis);
@@ -186,16 +185,26 @@ namespace TrenchBroom {
                                        Quatf(Vec3f::PosZ, Math::radians(+15.0f)) * xAxis,
                                        Quatf(Vec3f::PosZ, Math::radians(-15.0f)) * xAxis);
 
+             */
             renderService.setForegroundColor(pref(Preferences::HandleColor));
             renderService.renderPointHandle(m_position);
+
+            renderService.setForegroundColor(pref(Preferences::ZAxisColor));
             renderService.renderPointHandle(m_position + radius * xAxis);
+
+            renderService.setForegroundColor(pref(Preferences::XAxisColor));
             renderService.renderPointHandle(m_position + radius * yAxis);
+
+            renderService.setForegroundColor(pref(Preferences::YAxisColor));
             renderService.renderPointHandle(m_position + radius * zAxis);
 
             renderService.setForegroundColor(pref(Preferences::SelectedHandleColor));
             switch (highlight) {
                 case RotateObjectsHandle::HitArea_Center:
                     renderService.renderPointHandleHighlight(m_position);
+                    renderService.setForegroundColor(pref(Preferences::InfoOverlayTextColor));
+                    renderService.setBackgroundColor(pref(Preferences::InfoOverlayBackgroundColor));
+                    renderService.renderStringOnTop(m_position.asString(), m_position);
                     break;
                 case RotateObjectsHandle::HitArea_XAxis:
                     renderService.renderPointHandleHighlight(m_position + radius * xAxis);
@@ -208,7 +217,7 @@ namespace TrenchBroom {
                     break;
                 case RotateObjectsHandle::HitArea_None:
                     break;
-                    DEFAULT_SWITCH()
+                    switchDefault()
             };
         }
 
@@ -226,10 +235,10 @@ namespace TrenchBroom {
             Renderer::SetVboState setVboState(m_vbo);
             setVboState.active();
             
-            glDisable(GL_DEPTH_TEST);
+            glAssert(glDisable(GL_DEPTH_TEST));
             {
-                glDisable(GL_CULL_FACE);
-                glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+                glAssert(glDisable(GL_CULL_FACE));
+                glAssert(glPolygonMode(GL_FRONT_AND_BACK, GL_FILL));
                 Renderer::MultiplyModelMatrix translation(renderContext.transformation(), translationMatrix(m_position));
                 Renderer::ActiveShader shader(renderContext.shaderManager(), Renderer::Shaders::VaryingPUniformCShader);
                 shader.set("Color", getAngleIndicatorColor(handle));
@@ -242,15 +251,15 @@ namespace TrenchBroom {
                 setVboState.active();
                 circle.render();
                 
-                glPolygonMode(GL_FRONT, GL_FILL);
-                glEnable(GL_CULL_FACE);
+                glAssert(glPolygonMode(GL_FRONT, GL_FILL));
+                glAssert(glEnable(GL_CULL_FACE));
             }
 
             m_pointHandleRenderer.setColor(pointHandleColor);
             m_pointHandleRenderer.renderSingleHandle(renderContext, m_position);
             m_pointHandleRenderer.renderSingleHandle(renderContext, getPointHandlePosition(handle));
 
-            glEnable(GL_DEPTH_TEST);
+            glAssert(glEnable(GL_DEPTH_TEST));
         }
         */
         
@@ -288,7 +297,7 @@ namespace TrenchBroom {
                 case HitArea_Center:
                 case HitArea_None:
                     return Color(1.0f, 1.0f, 1.0f, 1.0f);
-                DEFAULT_SWITCH()
+                switchDefault()
             };
         }
     }

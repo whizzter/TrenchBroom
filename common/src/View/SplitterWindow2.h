@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__SplitterWindow2__
-#define __TrenchBroom__SplitterWindow2__
+#ifndef TrenchBroom_SplitterWindow2
+#define TrenchBroom_SplitterWindow2
 
 #include "Macros.h"
 
@@ -44,6 +44,7 @@ namespace TrenchBroom {
             SplitMode m_splitMode;
             wxWindow* m_sash;
             wxWindow* m_windows[NumWindows];
+            wxWindow* m_maximizedWindow;
             wxSize m_minSizes[NumWindows];
             
             float m_sashGravity;
@@ -60,6 +61,10 @@ namespace TrenchBroom {
             
             void splitHorizontally(wxWindow* left, wxWindow* right, const wxSize& leftMin = wxDefaultSize, const wxSize& rightMin = wxDefaultSize);
             void splitVertically(wxWindow* top, wxWindow* bottom, const wxSize& topMin = wxDefaultSize, const wxSize& bottomMin = wxDefaultSize);
+            
+            bool isMaximized(wxWindow* window) const;
+            void maximize(wxWindow* window);
+            void restore();
         private:
             void split(wxWindow* window1, wxWindow* window2, const wxSize& min1, const wxSize& min2, SplitMode splitMode);
             void bindMouseEvents(wxWindow* window);
@@ -86,6 +91,8 @@ namespace TrenchBroom {
             void sizeWindows();
             int sashSize() const;
             
+            wxWindow* unmaximizedWindow();
+            
             template <typename T>
             void setHV(T& p, const int h, const int v) const {
                 setH(p, h);
@@ -103,7 +110,7 @@ namespace TrenchBroom {
                         break;
                     case SplitMode_Unset:
                         break;
-                    DEFAULT_SWITCH()
+                    switchDefault()
                 }
             }
             
@@ -118,7 +125,7 @@ namespace TrenchBroom {
                         break;
                     case SplitMode_Unset:
                         break;
-                    DEFAULT_SWITCH()
+                    switchDefault()
                 }
             }
 
@@ -131,7 +138,7 @@ namespace TrenchBroom {
                         return p.x;
                     case SplitMode_Unset:
                         return 0;
-                    DEFAULT_SWITCH()
+                    switchDefault()
                 }
             }
             
@@ -144,7 +151,7 @@ namespace TrenchBroom {
                         return p.y;
                     case SplitMode_Unset:
                         return 0;
-                    DEFAULT_SWITCH()
+                    switchDefault()
                 }
             }
         };
@@ -153,4 +160,4 @@ namespace TrenchBroom {
 
 wxPersistentObject* wxCreatePersistentObject(TrenchBroom::View::SplitterWindow2* window);
 
-#endif /* defined(__TrenchBroom__SplitterWindow2__) */
+#endif /* defined(TrenchBroom_SplitterWindow2) */

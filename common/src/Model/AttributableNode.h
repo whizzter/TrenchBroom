@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__AttributableNode__
-#define __TrenchBroom__AttributableNode__
+#ifndef TrenchBroom_AttributableNode
+#define TrenchBroom_AttributableNode
 
 #include "Assets/AssetTypes.h"
 #include "Assets/EntityDefinition.h"
@@ -43,6 +43,9 @@ namespace TrenchBroom {
             AttributableNodeList m_linkTargets;
             AttributableNodeList m_killSources;
             AttributableNodeList m_killTargets;
+
+            // cache the classname for faster access
+            AttributeValue m_classname;
         public:
             virtual ~AttributableNode();
             
@@ -105,6 +108,8 @@ namespace TrenchBroom {
             
             void attributesWillChange();
             void attributesDidChange();
+            
+            void updateClassname();
         private: // search index management
             void addAttributesToIndex();
             void removeAttributesFromIndex();
@@ -184,4 +189,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__AttributableNode__) */
+#endif /* defined(TrenchBroom_AttributableNode) */

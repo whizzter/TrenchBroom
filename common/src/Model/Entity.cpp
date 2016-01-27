@@ -53,7 +53,7 @@ namespace TrenchBroom {
             return Vec3::parse(attribute(AttributeNames::Origin));
         }
 
-        Quat3 Entity::rotation() const {
+        Mat4x4 Entity::rotation() const {
             return EntityRotationPolicy::getRotation(this);
         }
 
@@ -94,11 +94,17 @@ namespace TrenchBroom {
             m_model = model;
         }
 
+        const BBox3& Entity::doGetBounds() const {
+            if (!m_boundsValid)
+                validateBounds();
+            return m_bounds;
+        }
+        
         Node* Entity::doClone(const BBox3& worldBounds) const {
             Entity* entity = new Entity();
+            cloneAttributes(entity);
             entity->setDefinition(definition());
             entity->setAttributes(attributes());
-            entity->addChildren(clone(worldBounds, children()));
             return entity;
         }
 
@@ -134,16 +140,20 @@ namespace TrenchBroom {
             return true;
         }
 
-        void Entity::doDescendantWasAdded(Node* node) {
+        void Entity::doChildWasAdded(Node* node) {
+            nodeBoundsDidChange();
+        }
+        
+        void Entity::doChildWasRemoved(Node* node) {
+            nodeBoundsDidChange();
+        }
+
+        void Entity::doNodeBoundsDidChange() {
             invalidateBounds();
         }
         
-        void Entity::doDescendantWasRemoved(Node* oldParent, Node* node) {
-            invalidateBounds();
-        }
-
-        void Entity::doDescendantDidChange(Node* node) {
-            invalidateBounds();
+        void Entity::doChildBoundsDidChange(Node* node) {
+            nodeBoundsDidChange();
         }
 
         bool Entity::doSelectable() const {
@@ -202,7 +212,7 @@ namespace TrenchBroom {
         }
 
         void Entity::doAttributesDidChange() {
-            invalidateBounds();
+            nodeBoundsDidChange();
         }
         
         bool Entity::doIsAttributeNameMutable(const AttributeName& name) const {
@@ -210,8 +220,6 @@ namespace TrenchBroom {
         }
         
         bool Entity::doIsAttributeValueMutable(const AttributeName& name) const {
-            if (name == AttributeNames::Origin)
-                return false;
             return true;
         }
 
@@ -221,12 +229,6 @@ namespace TrenchBroom {
         
         Vec3 Entity::doGetLinkTargetAnchor() const {
             return bounds().center();
-        }
-
-        const BBox3& Entity::doGetBounds() const {
-            if (!m_boundsValid)
-                validateBounds();
-            return m_bounds;
         }
 
         Node* Entity::doGetContainer() const {
@@ -272,7 +274,11 @@ namespace TrenchBroom {
                 iterate(visitor);
             } else {
                 // node change is called by setOrigin already
-                setOrigin(transformation * origin());
+                const Vec3 bottomCenter = Vec3(bounds().center().xy(), bounds().min.z());
+                const Vec3 delta = bottomCenter - origin();
+                const Vec3 transformedCenter = transformation * bottomCenter;
+                
+                setOrigin(transformedCenter - delta);
                 applyRotation(stripTranslation(transformation));
             }
         }

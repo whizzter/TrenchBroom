@@ -17,23 +17,24 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__EntityDefinitionLoader__
-#define __TrenchBroom__EntityDefinitionLoader__
+#ifndef TrenchBroom_EntityDefinitionLoader
+#define TrenchBroom_EntityDefinitionLoader
 
 #include "Assets/AssetTypes.h"
 
 namespace TrenchBroom {
     namespace IO {
+        class ParserStatus;
         class Path;
         
         class EntityDefinitionLoader {
         public:
             virtual ~EntityDefinitionLoader();
-            Assets::EntityDefinitionList loadEntityDefinitions(const IO::Path& path) const;
+            Assets::EntityDefinitionList loadEntityDefinitions(ParserStatus& status, const IO::Path& path) const;
         private:
-            virtual Assets::EntityDefinitionList doLoadEntityDefinitions(const IO::Path& path) const = 0;
+            virtual Assets::EntityDefinitionList doLoadEntityDefinitions(ParserStatus& status, const IO::Path& path) const = 0;
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__EntityDefinitionLoader__) */
+#endif /* defined(TrenchBroom_EntityDefinitionLoader) */

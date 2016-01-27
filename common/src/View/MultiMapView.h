@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__MultiMapView__
-#define __TrenchBroom__MultiMapView__
+#ifndef TrenchBroom_MultiMapView
+#define TrenchBroom_MultiMapView
 
 #include "View/MapViewContainer.h"
 
@@ -34,6 +34,7 @@ namespace TrenchBroom {
         private:
             typedef std::vector<MapView*> MapViewList;
             MapViewList m_mapViews;
+            MapView* m_maximizedView;
         protected:
             MultiMapView(wxWindow* parent);
         public:
@@ -44,20 +45,23 @@ namespace TrenchBroom {
             void doFlashSelection();
         private: // implement MapView interface
             bool doGetIsCurrent() const;
-
             void doSetToolBoxDropTarget();
             void doClearDropTarget();
-        
-            Vec3 doGetPasteObjectsDelta(const BBox3& bounds) const;
-            
-            void doCenterCameraOnSelection();
+            bool doCanSelectTall();
+            void doSelectTall();
+            void doFocusCameraOnSelection();
             void doMoveCameraToPosition(const Vec3& position);
-            
             void doMoveCameraToCurrentTracePoint();
-        private:
-            MapView* currentMapView() const;
+        private: // implement MapViewContainer interface
+            bool doCanMaximizeCurrentView() const;
+            bool doCurrentViewMaximized() const;
+            void doToggleMaximizeCurrentView();
+            MapView* doGetCurrentMapView() const;
+        private: // subclassing interface
+            virtual void doMaximizeView(MapView* view) = 0;
+            virtual void doRestoreViews() = 0;
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__MultiMapView__) */
+#endif /* defined(TrenchBroom_MultiMapView) */

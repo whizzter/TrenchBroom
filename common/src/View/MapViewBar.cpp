@@ -19,14 +19,18 @@
 
 #include "MapViewBar.h"
 
+#include "PreferenceManager.h"
+#include "Preferences.h"
 #include "View/MapDocument.h"
 #include "View/ViewConstants.h"
 #include "View/ViewEditor.h"
+#include "View/wxUtils.h"
 
 #include <wx/dcclient.h>
 #include <wx/simplebook.h>
 #include <wx/sizer.h>
 #include <wx/srchctrl.h>
+#include <wx/statbmp.h>
 #include <wx/stattext.h>
 
 namespace TrenchBroom {
@@ -47,6 +51,7 @@ namespace TrenchBroom {
         }
 
         void MapViewBar::OnSearchPatternChanged(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
         }
 
         void MapViewBar::createGui(MapDocumentWPtr document) {

@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__EntityLinkRenderer__
-#define __TrenchBroom__EntityLinkRenderer__
+#ifndef TrenchBroom_EntityLinkRenderer
+#define TrenchBroom_EntityLinkRenderer
 
 #include "Color.h"
 #include "Model/ModelTypes.h"
@@ -36,7 +36,7 @@ namespace TrenchBroom {
         class RenderBatch;
         class RenderContext;
         
-        class EntityLinkRenderer : public Renderable {
+        class EntityLinkRenderer : public DirectRenderable {
         private:
             typedef VertexSpecs::P3C4::Vertex Vertex;
             
@@ -56,20 +56,24 @@ namespace TrenchBroom {
             void render(RenderContext& renderContext, RenderBatch& renderBatch);
             void invalidate();
         private:
-            void doPrepare(Vbo& vbo);
+            void doPrepareVertices(Vbo& vertexVbo);
             void doRender(RenderContext& renderContext);
         private:
             void validate();
+            
+            class MatchEntities;
+            class CollectEntitiesVisitor;
             
             class CollectLinksVisitor;
             class CollectAllLinksVisitor;
             class CollectTransitiveSelectedLinksVisitor;
             class CollectDirectSelectedLinksVisitor;
 
-            Vertex::List links() const;
-            Vertex::List allLinks() const;
-            Vertex::List transitiveSelectedLinks() const;
-            Vertex::List directSelectedLinks() const;
+            void getLinks(Vertex::List& links) const;
+            void getAllLinks(Vertex::List& links) const;
+            void getTransitiveSelectedLinks(Vertex::List& links) const;
+            void getDirectSelectedLinks(Vertex::List& links) const;
+            void collectSelectedLinks(CollectLinksVisitor& collectLinks) const;
             
             EntityLinkRenderer(const EntityLinkRenderer& other);
             EntityLinkRenderer& operator=(const EntityLinkRenderer& other);
@@ -77,4 +81,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__EntityLinkRenderer__) */
+#endif /* defined(TrenchBroom_EntityLinkRenderer) */

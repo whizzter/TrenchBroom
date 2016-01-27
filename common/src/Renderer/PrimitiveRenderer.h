@@ -17,16 +17,14 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__PrimitiveRenderer__
-#define __TrenchBroom__PrimitiveRenderer__
+#ifndef TrenchBroom_PrimitiveRenderer
+#define TrenchBroom_PrimitiveRenderer
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
 #include "Color.h"
-#include "Renderer/LineMesh.h"
-#include "Renderer/LineMeshRenderer.h"
-#include "Renderer/TriangleMesh.h"
-#include "Renderer/TriangleMeshRenderer.h"
+#include "Renderer/IndexRangeMapBuilder.h"
+#include "Renderer/IndexRangeRenderer.h"
 #include "Renderer/Renderable.h"
 #include "Renderer/VertexArray.h"
 #include "Renderer/VertexSpec.h"
@@ -38,21 +36,27 @@ namespace TrenchBroom {
         class RenderContext;
         class Vbo;
         
-        class PrimitiveRenderer : public Renderable {
+        class PrimitiveRenderer : public DirectRenderable {
         private:
             typedef VertexSpecs::P3C4::Vertex Vertex;
-            typedef std::map<float, LineMesh<Vertex::Spec> > LineMeshMap;
-            typedef std::map<float, LineMeshRenderer> LineRendererMap;
-            
+            typedef std::map<float, IndexRangeMapBuilder<Vertex::Spec> > LineMeshMap;
             LineMeshMap m_lineMeshes;
-            TriangleMesh<Vertex::Spec> m_triangleMesh;
-
-            LineRendererMap m_lineRenderers;
-            SimpleTriangleMeshRenderer m_triangleRenderer;
+            IndexRangeMapBuilder<Vertex::Spec> m_triangleMesh;
+            
+            typedef std::map<float, IndexRangeRenderer> LineMeshRendererMap;
+            LineMeshRendererMap m_lineMeshRenderers;
+            
+            IndexRangeRenderer m_triangleMeshRenderer;
         public:
             void renderLine(const Color& color, float lineWidth, const Vec3f& start, const Vec3f& end);
             void renderLines(const Color& color, float lineWidth, const Vec3f::List& positions);
-            void renderCoordinateSystem(const Color& x, const Color& y, const Color& z, float lineWidth, const BBox3f& bounds);
+            void renderCoordinateSystemXY(const Color& x, const Color& y, float lineWidth, const BBox3f& bounds);
+            void renderCoordinateSystemXZ(const Color& x, const Color& z, float lineWidth, const BBox3f& bounds);
+            void renderCoordinateSystemYZ(const Color& y, const Color& z, float lineWidth, const BBox3f& bounds);
+            void renderCoordinateSystem3D(const Color& x, const Color& y, const Color& z, float lineWidth, const BBox3f& bounds);
+            
+            void renderPolygon(const Color& color, float lineWidth, const Vec3f::List& positions);
+            void renderFilledPolygon(const Color& color, const Vec3f::List& positions);
             
             void renderCircle(const Color& color, float lineWidth, const Vec3f& position, Math::Axis::Type normal, size_t segments, float radius, const Vec3f& startAxis, const Vec3f& endAxis);
             void renderCircle(const Color& color, float lineWidth, const Vec3f& position, Math::Axis::Type normal, size_t segments, float radius, float startAngle = 0.0f, float angleLength = Math::Cf::twoPi());
@@ -60,7 +64,7 @@ namespace TrenchBroom {
             void renderFilledCircle(const Color& color, const Vec3f& position, Math::Axis::Type normal, size_t segments, float radius, const Vec3f& startAxis, const Vec3f& endAxis);
             void renderFilledCircle(const Color& color, const Vec3f& position, Math::Axis::Type normal, size_t segments, float radius, float startAngle = 0.0f, float angleLength = Math::Cf::twoPi());
         private:
-            void doPrepare(Vbo& vbo);
+            void doPrepareVertices(Vbo& vertexVbo);
             void doRender(RenderContext& renderContext);
             void renderLines(RenderContext& renderContext);
             void renderTriangles(RenderContext& renderContext);
@@ -68,4 +72,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__PrimitiveRenderer__) */
+#endif /* defined(TrenchBroom_PrimitiveRenderer) */

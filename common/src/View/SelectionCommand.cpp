@@ -88,7 +88,7 @@ namespace TrenchBroom {
                     return  StringUtils::safePlural(faces.size(), "Deselect face", "Select faces");
                 case Action_DeselectAll:
                     return "Deselect all";
-                DEFAULT_SWITCH()
+                switchDefault()
             }
         }
 
@@ -142,7 +142,7 @@ namespace TrenchBroom {
             return false;
         }
         
-        bool SelectionCommand::doCollateWith(UndoableCommand* command) {
+        bool SelectionCommand::doCollateWith(UndoableCommand::Ptr command) {
             return false;
         }
     }

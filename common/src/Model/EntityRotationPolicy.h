@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__EntityRotationPolicy__
-#define __TrenchBroom__EntityRotationPolicy__
+#ifndef TrenchBroom_EntityRotationPolicy
+#define TrenchBroom_EntityRotationPolicy
 
 #include "Model/ModelTypes.h"
 
@@ -40,7 +40,7 @@ namespace TrenchBroom {
             };
         protected:
             EntityRotationPolicy();
-            static Quat3 getRotation(const Entity* entity);
+            static Mat4x4 getRotation(const Entity* entity);
             static void applyRotation(Entity* entity, const Mat4x4& transformation);
             static AttributeName getAttribute(const Entity* entity);
         private:
@@ -51,4 +51,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__EntityRotationPolicy__) */
+#endif /* defined(TrenchBroom_EntityRotationPolicy) */

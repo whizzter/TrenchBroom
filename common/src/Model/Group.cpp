@@ -99,9 +99,15 @@ namespace TrenchBroom {
             return m_name;
         }
 
+        const BBox3& Group::doGetBounds() const {
+            if (!m_boundsValid)
+                validateBounds();
+            return m_bounds;
+        }
+        
         Node* Group::doClone(const BBox3& worldBounds) const {
             Group* group = new Group(m_name);
-            group->addChildren(clone(worldBounds, children()));
+            cloneAttributes(group);
             return group;
         }
 
@@ -132,36 +138,44 @@ namespace TrenchBroom {
             return true;
         }
 
-        void Group::doDescendantWasAdded(Node* node) {
-            invalidateBounds();
+        void Group::doChildWasAdded(Node* node) {
+            nodeBoundsDidChange();
         }
         
-        void Group::doDescendantWasRemoved(Node* oldParent, Node* node) {
-            invalidateBounds();
+        void Group::doChildWasRemoved(Node* node) {
+            nodeBoundsDidChange();
         }
 
-        void Group::doDescendantDidChange(Node* node) {
+        void Group::doNodeBoundsDidChange() {
             invalidateBounds();
         }
         
+        void Group::doChildBoundsDidChange(Node* node) {
+            nodeBoundsDidChange();
+        }
+
+        bool Group::doShouldPropagateDescendantEvents() const {
+            return false;
+        }
+
         bool Group::doSelectable() const {
             return true;
         }
 
         void Group::doPick(const Ray3& ray, PickResult& pickResult) const {
-            if (opened() || hasOpenedDescendant()) {
-                const NodeList& children = Node::children();
-                NodeList::const_iterator it, end;
-                for (it = children.begin(), end = children.end(); it != end; ++it) {
-                    const Node* child = *it;
-                    child->pick(ray, pickResult);
-                }
-            } else {
+            if (!opened() && !hasOpenedDescendant()) {
                 const FloatType distance = intersectWithRay(ray);
                 if (!Math::isnan(distance)) {
                     const Vec3 hitPoint = ray.pointAtDistance(distance);
                     pickResult.addHit(Hit(GroupHit, distance, hitPoint, this));
                 }
+            }
+            
+            const NodeList& children = Node::children();
+            NodeList::const_iterator it, end;
+            for (it = children.begin(), end = children.end(); it != end; ++it) {
+                const Node* child = *it;
+                child->pick(ray, pickResult);
             }
         }
         
@@ -187,12 +201,6 @@ namespace TrenchBroom {
         
         void Group::doAccept(ConstNodeVisitor& visitor) const {
             visitor.visit(this);
-        }
-
-        const BBox3& Group::doGetBounds() const {
-            if (!m_boundsValid)
-                validateBounds();
-            return m_bounds;
         }
 
         Node* Group::doGetContainer() const {

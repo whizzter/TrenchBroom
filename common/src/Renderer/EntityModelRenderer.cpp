@@ -28,10 +28,10 @@
 #include "Assets/EntityModelManager.h"
 #include "Model/EditorContext.h"
 #include "Model/Entity.h"
-#include "Renderer/TriangleMeshRenderer.h"
 #include "Renderer/RenderContext.h"
 #include "Renderer/Shaders.h"
 #include "Renderer/ShaderManager.h"
+#include "Renderer/TexturedIndexRangeRenderer.h"
 #include "Renderer/Transformation.h"
 
 namespace TrenchBroom {
@@ -50,21 +50,12 @@ namespace TrenchBroom {
             const Assets::ModelSpecification modelSpec = entity->modelSpecification();
             Assets::EntityModel* model = m_entityModelManager.model(modelSpec.path);
             if (model != NULL) {
-                TexturedTriangleMeshRenderer* renderer = m_entityModelManager.renderer(modelSpec);
+                TexturedIndexRangeRenderer* renderer = m_entityModelManager.renderer(modelSpec);
                 if (renderer != NULL)
-                    m_entities[entity] = renderer;
+                    m_entities.insert(std::make_pair(entity, renderer));
             }
         }
         
-        void EntityModelRenderer::updateEntity(Model::Entity* entity) {
-            removeEntity(entity);
-            addEntity(entity);
-        }
-        
-        void EntityModelRenderer::removeEntity(Model::Entity* entity) {
-            m_entities.erase(entity);
-        }
-
         void EntityModelRenderer::clear() {
             m_entities.clear();
         }
@@ -97,10 +88,10 @@ namespace TrenchBroom {
             renderBatch.add(this);
         }
 
-        void EntityModelRenderer::doPrepare(Vbo& vbo) {
-            m_entityModelManager.prepare(vbo);
+        void EntityModelRenderer::doPrepareVertices(Vbo& vertexVbo) {
+            m_entityModelManager.prepare(vertexVbo);
         }
-
+        
         void EntityModelRenderer::doRender(RenderContext& renderContext) {
             PreferenceManager& prefs = PreferenceManager::instance();
             
@@ -111,8 +102,8 @@ namespace TrenchBroom {
             shader.set("GrayScale", false);
             shader.set("Texture", 0);
             
-            glEnable(GL_TEXTURE_2D);
-            glActiveTexture(GL_TEXTURE0);
+            glAssert(glEnable(GL_TEXTURE_2D));
+            glAssert(glActiveTexture(GL_TEXTURE0));
             
             EntityMap::iterator it, end;
             for (it = m_entities.begin(), end = m_entities.end(); it != end; ++it) {
@@ -120,11 +111,11 @@ namespace TrenchBroom {
                 if (!m_showHiddenEntities && !m_editorContext.visible(entity))
                     continue;
                 
-                TexturedTriangleMeshRenderer* renderer = it->second;
+                TexturedIndexRangeRenderer* renderer = it->second;
                 
-                const Vec3f position = entity->origin();
-                const Quatf rotation = entity->rotation();
-                const Mat4x4f matrix = translationMatrix(position) * rotationMatrix(rotation);
+                const Mat4x4f translation(translationMatrix(entity->origin()));
+                const Mat4x4f rotation(entity->rotation());
+                const Mat4x4f matrix = translation * rotation;
                 MultiplyModelMatrix multMatrix(renderContext.transformation(), matrix);
                 
                 renderer->render();

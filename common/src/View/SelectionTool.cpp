@@ -20,8 +20,11 @@
 #include "SelectionTool.h"
 
 #include "CollectionUtils.h"
+#include "Preferences.h"
+#include "PreferenceManager.h"
 #include "Model/Brush.h"
 #include "Model/BrushFace.h"
+#include "Model/EditorContext.h"
 #include "Model/Entity.h"
 #include "Model/Group.h"
 #include "Model/HitAdapter.h"
@@ -31,6 +34,7 @@
 #include "Model/PickResult.h"
 #include "Renderer/RenderContext.h"
 #include "View/InputState.h"
+#include "View/Grid.h"
 #include "View/MapDocument.h"
 
 namespace TrenchBroom {
@@ -143,7 +147,13 @@ namespace TrenchBroom {
         }
         
         bool SelectionTool::handleClick(const InputState& inputState) const {
-            return inputState.mouseButtonsPressed(MouseButtons::MBLeft);
+            if (!inputState.mouseButtonsPressed(MouseButtons::MBLeft))
+                return false;
+            
+            MapDocumentSPtr document = lock(m_document);
+            if (!document->editorContext().canChangeSelection())
+                return false;
+            return true;
         }
         
         bool SelectionTool::isFaceClick(const InputState& inputState) const {
@@ -156,6 +166,62 @@ namespace TrenchBroom {
 
         const Model::Hit& SelectionTool::firstHit(const InputState& inputState, const Model::Hit::HitType type) const {
             return inputState.pickResult().query().pickable().type(type).occluded().first();
+        }
+
+        void SelectionTool::doMouseScroll(const InputState& inputState) {
+            if (inputState.checkModifierKeys(MK_Yes, MK_Yes, MK_No))
+                adjustGrid(inputState);
+            else if (inputState.checkModifierKeys(MK_Yes, MK_No, MK_No))
+                drillSelection(inputState);
+        }
+        
+        void SelectionTool::adjustGrid(const InputState& inputState) {
+            const float factor = pref(Preferences::CameraMouseWheelInvert) ? -1.0f : 1.0f;;
+            MapDocumentSPtr document = lock(m_document);
+            Grid& grid = document->grid();
+            if (factor * inputState.scrollY() < 0.0f)
+                grid.incSize();
+            else if (factor * inputState.scrollY() > 0.0f)
+                grid.decSize();
+        }
+        
+        template <typename I>
+        I findFirstSelected(I it, I end) {
+            while (it != end) {
+                Model::Node* node = Model::hitToNode(*it);
+                if (node->selected())
+                    break;
+                ++it;
+            }
+            return it;
+        }
+        
+        template <typename I>
+        std::pair<Model::Node*, Model::Node*> findSelectionPair(I it, I end) {
+            static Model::Node* const NullNode = NULL;
+            
+            const I first = findFirstSelected(it, end);
+            if (first == end)
+                return std::make_pair(NullNode, NullNode);
+            I next = first; ++next;
+            if (next == end)
+                return std::make_pair(Model::hitToNode(*first), NullNode);
+            return std::make_pair(Model::hitToNode(*first), Model::hitToNode(*next));
+        }
+        
+        void SelectionTool::drillSelection(const InputState& inputState) {
+            const Model::Hit::List hits = inputState.pickResult().query().pickable().type(Model::Group::GroupHit | Model::Entity::EntityHit | Model::Brush::BrushHit).occluded().all();
+
+            const bool forward = (inputState.scrollY() > 0.0f) != (pref(Preferences::CameraMouseWheelInvert));
+            const std::pair<Model::Node*, Model::Node*> nodePair = forward ? findSelectionPair(hits.begin(), hits.end()) : findSelectionPair(hits.rbegin(), hits.rend());
+            
+            Model::Node* selectedNode = nodePair.first;
+            Model::Node* nextNode = nodePair.second;
+            if (nextNode != NULL) {
+                MapDocumentSPtr document = lock(m_document);
+                document->deselect(selectedNode);
+                document->select(nextNode);
+            }
         }
 
         bool SelectionTool::doStartMouseDrag(const InputState& inputState) {
@@ -233,14 +299,7 @@ namespace TrenchBroom {
         }
 
         bool SelectionTool::doCancel() {
-            MapDocumentSPtr document = lock(m_document);
-            if (document->hasSelection()) {
-                document->deselectAll();
-                return true;
-            } else if (document->currentGroup() != NULL) {
-                document->closeGroup();
-                return true;
-            }
+            // closing the current group is handled in MapViewBase
             return false;
         }
     }

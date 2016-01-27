@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__MapFacade__
-#define __TrenchBroom__MapFacade__
+#ifndef TrenchBroom_MapFacade
+#define TrenchBroom_MapFacade
 
 #include "Assets/AssetTypes.h"
 #include "Model/EntityColor.h"
@@ -75,7 +75,7 @@ namespace TrenchBroom {
             virtual bool deleteObjects() = 0;
             virtual bool duplicateObjects() = 0;
         public: // modifying transient node attributes
-            virtual void hide(const Model::NodeList& nodes) = 0;
+            virtual void hide(const Model::NodeList nodes) = 0;
             virtual void show(const Model::NodeList& nodes) = 0;
             virtual void resetVisibility(const Model::NodeList& nodes) = 0;
             
@@ -91,7 +91,7 @@ namespace TrenchBroom {
             virtual bool renameAttribute(const AttributeName& oldName, const AttributeName& newName) = 0;
             virtual bool removeAttribute(const AttributeName& name) = 0;
             
-            virtual bool convertEntityColorRange(const AttributeName& name, ColorRange::Type range) = 0;
+            virtual bool convertEntityColorRange(const AttributeName& name, Assets::ColorRange::Type range) = 0;
         public: // brush resizing
             virtual bool resizeBrushes(const BrushFaceList& faces, const Vec3& delta) = 0;
         public: // modifying face attributes
@@ -132,4 +132,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__MapFacade__) */
+#endif /* defined(TrenchBroom_MapFacade) */

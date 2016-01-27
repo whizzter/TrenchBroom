@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__ResizeBrushesToolAdapter__
-#define __TrenchBroom__ResizeBrushesToolAdapter__
+#ifndef TrenchBroom_ResizeBrushesToolAdapter
+#define TrenchBroom_ResizeBrushesToolAdapter
 
 #include "Model/Hit.h"
 #include "Renderer/EdgeRenderer.h"
@@ -61,7 +61,7 @@ namespace TrenchBroom {
             
             void doSetRenderOptions(const InputState& inputState, Renderer::RenderContext& renderContext) const;
             void doRender(const InputState& inputState, Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch);
-            Renderer::EdgeRenderer buildEdgeRenderer();
+            Renderer::DirectEdgeRenderer buildEdgeRenderer();
             
             bool doCancel();
 
@@ -87,4 +87,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__ResizeBrushesToolAdapter__) */
+#endif /* defined(TrenchBroom_ResizeBrushesToolAdapter) */

@@ -30,6 +30,8 @@ namespace TrenchBroom {
         wxPanel(parent, windowId),
         m_upBitmap(upBitmap),
         m_downBitmap(downBitmap),
+        m_upDisabledBitmap(m_upBitmap.ConvertToDisabled()),
+        m_downDisabledBitmap(m_downBitmap.ConvertToDisabled()),
         m_state(false) {
             assert(m_upBitmap.IsOk());
             assert(m_downBitmap.IsOk());
@@ -41,6 +43,8 @@ namespace TrenchBroom {
         }
         
         void BitmapToggleButton::OnPaint(wxPaintEvent& event) {
+            if (IsBeingDeleted()) return;
+
             const wxSize size = GetClientSize();
             const wxSize bmpSize = bitmapSize();
             const wxSize delta = size - bmpSize;
@@ -51,6 +55,8 @@ namespace TrenchBroom {
         }
         
         void BitmapToggleButton::OnMouseDown(wxMouseEvent& event) {
+            if (IsBeingDeleted()) return;
+
             if (!IsEnabled())
                 return;
             
@@ -65,8 +71,10 @@ namespace TrenchBroom {
         }
 
         void BitmapToggleButton::DoUpdateWindowUI(wxUpdateUIEvent& event) {
-            if (event.GetSetEnabled())
+            if (event.GetSetEnabled() && IsEnabled() != event.GetEnabled()) {
                 Enable(event.GetEnabled());
+                Refresh();
+            }
             if (event.GetSetChecked()) {
                 if (m_state != event.GetChecked()) {
                     m_state = event.GetChecked();
@@ -81,7 +89,9 @@ namespace TrenchBroom {
         }
 
         wxBitmap BitmapToggleButton::currentBitmap() const {
-            return m_state ? m_downBitmap : m_upBitmap;
+            if (IsEnabled())
+                return m_state ? m_downBitmap : m_upBitmap;
+            return m_state ? m_downDisabledBitmap : m_upDisabledBitmap;
         }
     }
 }

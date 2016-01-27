@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__ActionManager__
-#define __TrenchBroom__ActionManager__
+#ifndef TrenchBroom_ActionManager
+#define TrenchBroom_ActionManager
 
 #include "View/ActionContext.h"
 #include "View/ViewShortcut.h"
@@ -41,6 +41,8 @@ namespace TrenchBroom {
         public:
             typedef std::vector<KeyboardShortcutEntry*> ShortcutEntryList;
         private:
+            typedef std::vector<wxAcceleratorEntry> AcceleratorEntryList;
+
             MenuBar* m_menuBar;
             ViewShortcut::List m_viewShortcuts;
         public:
@@ -52,12 +54,20 @@ namespace TrenchBroom {
             const ActionMenuItem* findMenuItem(int id) const;
             
             void getShortcutEntries(ShortcutEntryList& entries);
-
-            wxMenuBar* createMenuBar() const;
+            String getJSTable();
+        private:
+            void getKeysJSTable(StringStream& str);
+            void getMenuJSTable(StringStream& str);
+            void getActionJSTable(StringStream& str);
+        public:
+            wxMenuBar* createMenuBar(bool withShortcuts) const;
             bool isMenuShortcutPreference(const IO::Path& path) const;
 
             wxAcceleratorTable createViewAcceleratorTable(ActionContext context, ActionView view) const;
-            
+        private:
+            void addViewActions(ActionContext context, ActionView view, AcceleratorEntryList& accelerators) const;
+            void addMenuActions(ActionContext context, ActionView view, AcceleratorEntryList& accelerators) const;
+        public:
             void resetShortcutsToDefaults();
         private:
             ActionManager();
@@ -72,4 +82,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__ActionManager__) */
+#endif /* defined(TrenchBroom_ActionManager) */

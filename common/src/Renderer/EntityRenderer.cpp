@@ -30,6 +30,7 @@
 #include "Model/EditorContext.h"
 #include "Model/Entity.h"
 #include "Renderer/Camera.h"
+#include "Renderer/IndexRangeMap.h"
 #include "Renderer/RenderBatch.h"
 #include "Renderer/RenderContext.h"
 #include "Renderer/RenderService.h"
@@ -37,8 +38,6 @@
 #include "Renderer/ShaderManager.h"
 #include "Renderer/Shaders.h"
 #include "Renderer/TextAnchor.h"
-#include "Renderer/Vbo.h"
-#include "Renderer/VboBlock.h"
 #include "Renderer/VertexSpec.h"
 
 namespace TrenchBroom {
@@ -82,53 +81,25 @@ namespace TrenchBroom {
         m_showHiddenEntities(false),
         m_vbo(0xFFF) {}
         
-        EntityRenderer::~EntityRenderer() {
-            clear();
+        void EntityRenderer::setEntities(const Model::EntityList& entities) {
+            m_entities = entities;
+            reloadModels();
+            invalidate();
         }
-        
-        void EntityRenderer::addEntity(Model::Entity* entity) {
-            assert(entity != NULL);
 
-            assert(m_entities.count(entity) == 0);
-            m_entities.insert(entity);
-            m_modelRenderer.addEntity(entity);
-            
-            invalidateBounds();
-        }
-        
-        void EntityRenderer::updateEntity(Model::Entity* entity) {
-            assert(entity != NULL);
-            
-            assert(m_entities.count(entity) == 1);
-            m_modelRenderer.updateEntity(entity);
-            invalidateBounds();
-        }
-        
-        void EntityRenderer::removeEntity(Model::Entity* entity) {
-            assert(entity != NULL);
-            
-            Model::EntitySet::iterator it = m_entities.find(entity);
-            assert(it != m_entities.end());
-            m_entities.erase(it);
-            
-            m_modelRenderer.removeEntity(entity);
-            invalidateBounds();
-        }
-        
         void EntityRenderer::invalidate() {
             invalidateBounds();
         }
 
         void EntityRenderer::clear() {
             m_entities.clear();
-            m_wireframeBoundsRenderer = EdgeRenderer();
+            m_wireframeBoundsRenderer = DirectEdgeRenderer();
             m_solidBoundsRenderer = TriangleRenderer();
             m_modelRenderer.clear();
         }
 
         void EntityRenderer::reloadModels() {
-            m_modelRenderer.clear();
-            m_modelRenderer.addEntities(m_entities.begin(), m_entities.end());
+            m_modelRenderer.setEntities(m_entities.begin(), m_entities.end());
         }
 
         void EntityRenderer::setShowOverlays(const bool showOverlays) {
@@ -203,18 +174,9 @@ namespace TrenchBroom {
         }
         
         void EntityRenderer::renderWireframeBounds(RenderBatch& renderBatch) {
-            if (m_showOccludedBounds) {
-                Renderer::RenderEdges* renderOccludedEdges = new Renderer::RenderEdges(Reference::ref(m_wireframeBoundsRenderer));
-                if (m_overrideBoundsColor)
-                    renderOccludedEdges->setColor(m_boundsColor);
-                renderOccludedEdges->setRenderOccluded();
-                renderBatch.addOneShot(renderOccludedEdges);
-            }
-            
-            Renderer::RenderEdges* renderUnoccludedEdges = new Renderer::RenderEdges(Reference::ref(m_wireframeBoundsRenderer));
-            if (m_overrideBoundsColor)
-                renderUnoccludedEdges->setColor(m_boundsColor);
-            renderBatch.addOneShot(renderUnoccludedEdges);
+            if (m_showOccludedBounds)
+                m_wireframeBoundsRenderer.renderOnTop(renderBatch, m_overrideBoundsColor, m_boundsColor);
+            m_wireframeBoundsRenderer.render(renderBatch, m_overrideBoundsColor, m_boundsColor);
         }
         
         void EntityRenderer::renderSolidBounds(RenderBatch& renderBatch) {
@@ -239,7 +201,7 @@ namespace TrenchBroom {
                 renderService.setForegroundColor(m_overlayTextColor);
                 renderService.setBackgroundColor(m_overlayBackgroundColor);
                 
-                Model::EntitySet::const_iterator it, end;
+                Model::EntityList::const_iterator it, end;
                 for (it = m_entities.begin(), end = m_entities.end(); it != end; ++it) {
                     const Model::Entity* entity = *it;
                     if (m_showHiddenEntities || m_editorContext.visible(entity)) {
@@ -262,15 +224,15 @@ namespace TrenchBroom {
             const Vec3f::List arrow = arrowHead(9.0f, 6.0f);
             
             Vertex::List vertices;
-            Model::EntitySet::const_iterator it, end;
+            Model::EntityList::const_iterator it, end;
             for (it = m_entities.begin(), end = m_entities.end(); it != end; ++it) {
                 const Model::Entity* entity = *it;
                 if (!m_showHiddenEntities && !m_editorContext.visible(entity))
                     continue;
                 
-                const Quatf rotation = Quatf(entity->rotation());
+                const Mat4x4f rotation(entity->rotation());
                 const Vec3f direction = rotation * Vec3f::PosX;
-                const Vec3f center = Vec3f(entity->bounds().center());
+                const Vec3f center(entity->bounds().center());
                 
                 const Vec3f toCam = renderContext.camera().position() - center;
                 if (toCam.squaredLength() > maxDistance2)
@@ -284,7 +246,7 @@ namespace TrenchBroom {
                 
                 const Vec3f rotZ = rotation * Vec3f::PosZ;
                 const float angle = -angleBetween(rotZ, onPlane, direction);
-                const Mat4x4f matrix = translationMatrix(center) * rotationMatrix(direction, angle) * rotationMatrix(rotation) * translationMatrix(16.0f * Vec3f::PosX);
+                const Mat4x4f matrix = translationMatrix(center) * rotationMatrix(direction, angle) * rotation * translationMatrix(16.0f * Vec3f::PosX);
                 
                 for (size_t i = 0; i < 3; ++i)
                     vertices.push_back(Vertex(matrix * arrow[i]));
@@ -294,23 +256,23 @@ namespace TrenchBroom {
             if (vertexCount == 0)
                 return;
             
-            VertexArray array = VertexArray::swap(GL_TRIANGLES, vertices);
-            SetVboState vboState(m_vbo);
-            vboState.mapped();
+            VertexArray array = VertexArray::swap(vertices);
+            
+            ActivateVbo activate(m_vbo);
             array.prepare(m_vbo);
-            vboState.active();
             
             ActiveShader shader(renderContext.shaderManager(), Shaders::HandleShader);
 
-            glDepthMask(GL_FALSE);
+            glAssert(glDepthMask(GL_FALSE));
 
-            glDisable(GL_DEPTH_TEST);
-            glPolygonMode(GL_FRONT, GL_LINE);
+            glAssert(glDisable(GL_DEPTH_TEST));
+            glAssert(glPolygonMode(GL_FRONT, GL_LINE));
             shader.set("Color", m_angleColor);
-            array.render();
+            array.render(GL_TRIANGLES);
 
-            glPolygonMode(GL_FRONT, GL_FILL);
-            glDepthMask(GL_TRUE);
+            glAssert(glPolygonMode(GL_FRONT, GL_FILL));
+            glAssert(glDepthMask(GL_TRUE));
+            glAssert(glEnable(GL_DEPTH_TEST));
         }
 
         Vec3f::List EntityRenderer::arrowHead(const float length, const float width) const {
@@ -334,9 +296,7 @@ namespace TrenchBroom {
                 vertices.push_back(VertexSpecs::P3NC4::Vertex(v1, n, color));
                 vertices.push_back(VertexSpecs::P3NC4::Vertex(v2, n, color));
                 vertices.push_back(VertexSpecs::P3NC4::Vertex(v3, n, color));
-                vertices.push_back(VertexSpecs::P3NC4::Vertex(v3, n, color));
                 vertices.push_back(VertexSpecs::P3NC4::Vertex(v4, n, color));
-                vertices.push_back(VertexSpecs::P3NC4::Vertex(v1, n, color));
             }
         };
 
@@ -379,7 +339,7 @@ namespace TrenchBroom {
                 wireframeVertices.reserve(24 * m_entities.size());
 
                 BuildWireframeBoundsVertices wireframeBoundsBuilder(wireframeVertices);
-                Model::EntitySet::const_iterator it, end;
+                Model::EntityList::const_iterator it, end;
                 for (it = m_entities.begin(), end = m_entities.end(); it != end; ++it) {
                     const Model::Entity* entity = *it;
                     if (m_editorContext.visible(entity)) {
@@ -391,12 +351,12 @@ namespace TrenchBroom {
                     }
                 }
                 
-                m_wireframeBoundsRenderer = EdgeRenderer(VertexArray::swap(GL_LINES, wireframeVertices));
+                m_wireframeBoundsRenderer = DirectEdgeRenderer(VertexArray::swap(wireframeVertices), GL_LINES);
             } else {
                 VertexSpecs::P3C4::Vertex::List wireframeVertices;
                 wireframeVertices.reserve(24 * m_entities.size());
 
-                Model::EntitySet::const_iterator it, end;
+                Model::EntityList::const_iterator it, end;
                 for (it = m_entities.begin(), end = m_entities.end(); it != end; ++it) {
                     const Model::Entity* entity = *it;
                     if (m_editorContext.visible(entity)) {
@@ -410,21 +370,21 @@ namespace TrenchBroom {
                     }
                 }
 
-                m_wireframeBoundsRenderer = EdgeRenderer(VertexArray::swap(GL_LINES, wireframeVertices));
+                m_wireframeBoundsRenderer = DirectEdgeRenderer(VertexArray::swap(wireframeVertices), GL_LINES);
             }
             
-            m_solidBoundsRenderer = TriangleRenderer(VertexArray::swap(GL_TRIANGLES, solidVertices));
+            m_solidBoundsRenderer = TriangleRenderer(VertexArray::swap(solidVertices), GL_QUADS);
             m_boundsValid = true;
         }
 
         AttrString EntityRenderer::entityString(const Model::Entity* entity) const {
             const Model::AttributeValue& classname = entity->classname();
-            const Model::AttributeValue& targetname = entity->attribute(Model::AttributeNames::Targetname);
+            // const Model::AttributeValue& targetname = entity->attribute(Model::AttributeNames::Targetname);
             
             AttrString str;
             str.appendCentered(classname);
-            if (!targetname.empty())
-                str.appendCentered(targetname);
+            // if (!targetname.empty())
+               // str.appendCentered(targetname);
             return str;
         }
 

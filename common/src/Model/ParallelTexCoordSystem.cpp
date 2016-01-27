@@ -33,15 +33,16 @@ namespace TrenchBroom {
             m_coordSystem->m_xAxis = m_xAxis;
             m_coordSystem->m_yAxis = m_yAxis;
         }
-
-        ParallelTexCoordSystem::ParallelTexCoordSystem(const Vec3& xAxis, const Vec3& yAxis) :
-        m_xAxis(xAxis),
-        m_yAxis(yAxis) {}
         
-        ParallelTexCoordSystem::ParallelTexCoordSystem(const Vec3& point0, const Vec3& point1, const Vec3& point2) {
+        ParallelTexCoordSystem::ParallelTexCoordSystem(const Vec3& point0, const Vec3& point1, const Vec3& point2, const BrushFaceAttributes& attribs) {
             const Vec3 normal = crossed(point2 - point0, point1 - point0).normalized();
             computeInitialAxes(normal, m_xAxis, m_yAxis);
+            applyRotation(normal, attribs.rotation());
         }
+
+        ParallelTexCoordSystem::ParallelTexCoordSystem(const Vec3& xAxis, const Vec3& yAxis, const BrushFaceAttributes& attribs) :
+        m_xAxis(xAxis),
+        m_yAxis(yAxis) {}
         
         TexCoordSystem* ParallelTexCoordSystem::doClone() const {
             return new ParallelTexCoordSystem(*this);
@@ -63,6 +64,21 @@ namespace TrenchBroom {
             return crossed(m_xAxis, m_yAxis).normalized();
         }
         
+        void ParallelTexCoordSystem::doResetTextureAxes(const Vec3& normal) {
+            computeInitialAxes(normal, m_xAxis, m_yAxis);
+        }
+        
+        void ParallelTexCoordSystem::doResetTextureAxesToParaxial(const Vec3& normal, float angle) {
+            const size_t index = ParaxialTexCoordSystem::planeNormalIndex(normal);
+            ParaxialTexCoordSystem::axes(index, m_xAxis, m_yAxis);
+            applyRotation(normal, static_cast<FloatType>(angle));
+        }
+        
+        void ParallelTexCoordSystem::doResetTextureAxesToParallel(const Vec3& normal, float angle) {
+            computeInitialAxes(normal, m_xAxis, m_yAxis);
+            applyRotation(normal, static_cast<FloatType>(angle));
+        }
+
         bool ParallelTexCoordSystem::isRotationInverted(const Vec3& normal) const {
             return false;
         }
@@ -77,20 +93,37 @@ namespace TrenchBroom {
                 return;
             
             const FloatType angle = static_cast<FloatType>(Math::radians(-angleDelta));
+            applyRotation(normal, angle);
+        }
+        
+        void ParallelTexCoordSystem::applyRotation(const Vec3& normal, const FloatType angle) {
             const Quat3 rot(normal, angle);
-            
             m_xAxis = rot * m_xAxis;
             m_yAxis = rot * m_yAxis;
         }
-        
+
         void ParallelTexCoordSystem::doTransform(const Plane3& oldBoundary, const Mat4x4& transformation, BrushFaceAttributes& attribs, bool lockTexture, const Vec3& oldInvariant) {
-            // calculate the current texture coordinates of the face's center
-            const Vec2f oldInvariantTechCoords = computeTexCoords(oldInvariant, attribs.scale()) + attribs.offset();
-            
+
+            // compute the new texture axes
             const Vec3 offset = transformation * Vec3::Null;
             m_xAxis           = transformation * m_xAxis - offset;
             m_yAxis           = transformation * m_yAxis - offset;
+            assert(!m_xAxis.nan());
+            assert(!m_yAxis.nan());
 
+            if (!lockTexture || attribs.xScale() == 0.0f || attribs.yScale() == 0.0f)
+                return;
+            
+            // determine the rotation by which the texture coordinate system will be rotated about its normal
+            const float angleDelta = computeTextureAngle(oldBoundary, transformation);
+            const float newAngle = Math::correct(Math::normalizeDegrees(attribs.rotation() + angleDelta), 4);
+            assert(!Math::isnan(newAngle));
+            attribs.setRotation(newAngle);
+
+            // calculate the current texture coordinates of the face's center
+            const Vec2f oldInvariantTechCoords = computeTexCoords(oldInvariant, attribs.scale()) + attribs.offset();
+            assert(!oldInvariantTechCoords.nan());
+            
             // determine the new texture coordinates of the transformed center of the face, sans offsets
             const Vec3 newInvariant = transformation * oldInvariant;
             const Vec2f newInvariantTexCoords = computeTexCoords(newInvariant, attribs.scale());
@@ -98,7 +131,35 @@ namespace TrenchBroom {
             // since the center should be invariant, the offsets are determined by the difference of the current and
             // the original texture coordinates of the center
             const Vec2f newOffset = attribs.modOffset(oldInvariantTechCoords - newInvariantTexCoords).corrected(4);
+            assert(!newOffset.nan());
             attribs.setOffset(newOffset);
+        }
+
+        float ParallelTexCoordSystem::computeTextureAngle(const Plane3& oldBoundary, const Mat4x4& transformation) const {
+            const Mat4x4& rotation = stripTranslation(transformation);
+            const Vec3& oldNormal = oldBoundary.normal;
+            const Vec3  newNormal = rotation * oldNormal;
+
+            const Mat4x4 nonRotation = computeNonTextureRotation(oldNormal, newNormal, rotation);
+            const Vec3 newXAxis = (rotation * m_xAxis).normalized();
+            const Vec3 nonXAxis = (nonRotation * m_xAxis).normalized();
+            const FloatType angle = Math::degrees(angleBetween(nonXAxis, newXAxis, newNormal));
+            return static_cast<float>(angle);
+        }
+
+        Mat4x4 ParallelTexCoordSystem::computeNonTextureRotation(const Vec3& oldNormal, const Vec3& newNormal, const Mat4x4& rotation) const {
+            if (oldNormal.equals(newNormal))
+                return Mat4x4::Identity;
+            
+            if (oldNormal.equals(-newNormal)) {
+                const Vec3 minorAxis = oldNormal.majorAxis(2);
+                const Vec3 axis = crossed(oldNormal, minorAxis).normalized();
+                return rotationMatrix(axis, Math::C::pi());
+            }
+            
+            const Vec3 axis = crossed(newNormal, oldNormal).normalized();
+            const FloatType angle = angleBetween(newNormal, oldNormal, axis);
+            return rotationMatrix(axis, angle);
         }
 
         void ParallelTexCoordSystem::doUpdateNormal(const Vec3& oldNormal, const Vec3& newNormal, const BrushFaceAttributes& attribs) {

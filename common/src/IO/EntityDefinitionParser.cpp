@@ -23,8 +23,8 @@ namespace TrenchBroom {
     namespace IO {
         EntityDefinitionParser::~EntityDefinitionParser() {}
         
-        Assets::EntityDefinitionList EntityDefinitionParser::parseDefinitions() {
-            return doParseDefinitions();
+        Assets::EntityDefinitionList EntityDefinitionParser::parseDefinitions(ParserStatus& status) {
+            return doParseDefinitions(status);
         }
     }
 }

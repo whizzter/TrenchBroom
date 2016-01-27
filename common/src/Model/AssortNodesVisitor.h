@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__AssortNodesVisitor__
-#define __TrenchBroom__AssortNodesVisitor__
+#ifndef TrenchBroom_AssortNodesVisitor
+#define TrenchBroom_AssortNodesVisitor
 
 #include "Model/ModelTypes.h"
 #include "Model/NodeVisitor.h"
@@ -103,7 +103,8 @@ namespace TrenchBroom {
         typedef AssortNodesVisitorT<CollectLayersStrategy, SkipGroupsStrategy,    SkipEntitiesStrategy,    SkipBrushesStrategy>    CollectLayersVisitor;
         typedef AssortNodesVisitorT<SkipLayersStrategy,    CollectGroupsStrategy, SkipEntitiesStrategy,    SkipBrushesStrategy>    CollectGroupsVisitor;
         typedef AssortNodesVisitorT<SkipLayersStrategy,    CollectGroupsStrategy, CollectEntitiesStrategy, CollectBrushesStrategy>    CollectObjectsVisitor;
+        typedef AssortNodesVisitorT<SkipLayersStrategy,    SkipGroupsStrategy,    SkipEntitiesStrategy,    CollectBrushesStrategy>    CollectBrushesVisitor;
     }
 }
 
-#endif /* defined(__TrenchBroom__AssortNodesVisitor__) */
+#endif /* defined(TrenchBroom_AssortNodesVisitor) */

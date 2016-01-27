@@ -32,10 +32,6 @@ namespace TrenchBroom {
             return doGetModifiable();
         }
 
-        int KeyboardShortcutEntry::requiredModifiers() const {
-            return doGetRequiredModifiers();
-        }
-
         bool KeyboardShortcutEntry::hasConflicts() const {
             return m_hasConflicts;
         }
@@ -57,8 +53,8 @@ namespace TrenchBroom {
             if ((actionContext() & entry->actionContext()) == 0)
                 return false;
             
-            const KeyboardShortcut& mine = doGetShortcut();
-            const KeyboardShortcut& theirs = entry->doGetShortcut();
+            const KeyboardShortcut& mine = shortcut();
+            const KeyboardShortcut& theirs = entry->shortcut();
             
             return mine.hasKey() && theirs.hasKey() && mine == theirs;
         }
@@ -67,6 +63,10 @@ namespace TrenchBroom {
             return doGetActionContext();
         }
 
+        bool KeyboardShortcutEntry::appliesToContext(const int context) const {
+            return (actionContext() & context) != 0;
+        }
+        
         wxString KeyboardShortcutEntry::actionContextDescription() const {
             return actionContextName(actionContext());
         }
@@ -76,15 +76,31 @@ namespace TrenchBroom {
         }
         
         wxString KeyboardShortcutEntry::shortcutDescription() const {
-            return doGetShortcut().shortcutDisplayString();
+            return shortcut().shortcutDisplayString();
         }
         
-        bool KeyboardShortcutEntry::equals(const KeyboardShortcut& shortcut) const {
-            return doGetShortcut() == shortcut;
+        wxString KeyboardShortcutEntry::asJsonString() const {
+            return doGetJsonString();
+        }
+
+        const IO::Path& KeyboardShortcutEntry::preferencePath() const {
+            return doGetPreference().path();
+        }
+        
+        const KeyboardShortcut& KeyboardShortcutEntry::shortcut() const {
+            return doGetShortcut();
+        }
+
+        bool KeyboardShortcutEntry::equals(const KeyboardShortcut& i_shortcut) const {
+            return shortcut() == i_shortcut;
         }
         
         void KeyboardShortcutEntry::updateShortcut(const KeyboardShortcut& shortcut) {
             doUpdateShortcut(shortcut);
+        }
+
+        wxAcceleratorEntry KeyboardShortcutEntry::acceleratorEntry(const ActionView view) const {
+            return doGetAcceleratorEntry(view);
         }
     }
 }

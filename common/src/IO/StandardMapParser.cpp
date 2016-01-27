@@ -20,11 +20,13 @@
 #include "StandardMapParser.h"
 
 #include "Logger.h"
-#include "SetBool.h"
+#include "SetAny.h"
 #include "Model/BrushFace.h"
 
 namespace TrenchBroom {
     namespace IO {
+        const String QuakeMapTokenizer::NumberDelim = Whitespace + ")";
+
         QuakeMapTokenizer::QuakeMapTokenizer(const char* begin, const char* end) :
         Tokenizer(begin, end),
         m_skipEol(true) {}
@@ -79,21 +81,21 @@ namespace TrenchBroom {
                         return Token(QuakeMapToken::String, c, e, offset(c), startLine, startColumn);
                     }
                     case '\n':
-                    case '\r':
                         if (!m_skipEol) {
                             advance();
                             return Token(QuakeMapToken::Eol, c, c+1, offset(c), startLine, startColumn);
                         }
+                    case '\r':
                     case ' ':
                     case '\t':
                         discardWhile(Whitespace);
                         break;
                     default: { // whitespace, integer, decimal or word
-                        const char* e = readInteger(Whitespace);
+                        const char* e = readInteger(NumberDelim);
                         if (e != NULL)
                             return Token(QuakeMapToken::Integer, c, e, offset(c), startLine, startColumn);
                         
-                        e = readDecimal(Whitespace);
+                        e = readDecimal(NumberDelim);
                         if (e != NULL)
                             return Token(QuakeMapToken::Decimal, c, e, offset(c), startLine, startColumn);
                         
@@ -205,6 +207,10 @@ namespace TrenchBroom {
                 parseFace();
                 token = m_tokenizer.nextToken();
             }
+        }
+
+        void StandardMapParser::reset() {
+            m_tokenizer.reset();
         }
 
         void StandardMapParser::setFormat(const Model::MapFormat::Type format) {
@@ -350,7 +356,7 @@ namespace TrenchBroom {
             }
             
             // texture names can contain braces etc, so we just read everything until the next opening bracket or number
-            String textureName = m_tokenizer.readRemainder(QuakeMapToken::OBracket | QuakeMapToken::Integer | QuakeMapToken::Decimal);
+            String textureName = m_tokenizer.readAnyString(QuakeMapTokenizer::Whitespace);
             if (textureName == Model::BrushFace::NoTextureName)
                 textureName = "";
             

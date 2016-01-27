@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__EntityDefinitionManager__
-#define __TrenchBroom__EntityDefinitionManager__
+#ifndef TrenchBroom_EntityDefinitionManager
+#define TrenchBroom_EntityDefinitionManager
 
 #include "Assets/AssetTypes.h"
 #include "Assets/EntityDefinition.h"
@@ -30,6 +30,7 @@
 namespace TrenchBroom {
     namespace IO {
         class EntityDefinitionLoader;
+        class ParserStatus;
         class Path;
     }
     
@@ -43,7 +44,7 @@ namespace TrenchBroom {
         public:
             ~EntityDefinitionManager();
 
-            void loadDefinitions(const IO::Path& path, const IO::EntityDefinitionLoader& loader);
+            void loadDefinitions(const IO::Path& path, const IO::EntityDefinitionLoader& loader, IO::ParserStatus& status);
             void clear();
             
             EntityDefinition* definition(const Model::AttributableNode* attributable) const;
@@ -61,4 +62,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__EntityDefinitionManager__) */
+#endif /* defined(TrenchBroom_EntityDefinitionManager) */

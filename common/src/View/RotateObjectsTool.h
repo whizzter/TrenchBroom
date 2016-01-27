@@ -17,13 +17,12 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__RotateObjectsTool__
-#define __TrenchBroom__RotateObjectsTool__
+#ifndef TrenchBroom_RotateObjectsTool
+#define TrenchBroom_RotateObjectsTool
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
 #include "Model/Hit.h"
-#include "View/MapViewToolPage.h"
 #include "View/Tool.h"
 #include "View/RotateObjectsHandle.h"
 
@@ -36,7 +35,7 @@ namespace TrenchBroom {
         class RotateObjectsHandle;
         class RotateObjectsToolPage;
 
-        class RotateObjectsTool : public Tool, public MapViewToolPage {
+        class RotateObjectsTool : public Tool {
         private:
             MapDocumentWPtr m_document;
             RotateObjectsToolPage* m_toolPage;
@@ -76,8 +75,9 @@ namespace TrenchBroom {
             void renderHandle3D(Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch, RotateObjectsHandle::HitArea area);
         private:
             wxWindow* doCreatePage(wxWindow* parent);
+            String doGetIconName() const;
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__RotateObjectsTool__) */
+#endif /* defined(TrenchBroom_RotateObjectsTool) */

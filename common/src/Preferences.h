@@ -34,6 +34,7 @@ namespace TrenchBroom {
     namespace Preferences {
         extern Preference<int> MapViewLayout;
         
+        extern Preference<bool>  ShowAxes;
         extern Preference<Color> BackgroundColor;
         extern Preference<float> AxisLength;
         extern Preference<Color> XAxisColor;
@@ -61,8 +62,11 @@ namespace TrenchBroom {
         extern Preference<Color> LockedEdgeColor;
         extern Preference<Color> UndefinedEntityColor;
         
+        extern Preference<Color> SelectionBoundsColor;
+        
         extern Preference<Color> InfoOverlayTextColor;
         extern Preference<Color> InfoOverlayBackgroundColor;
+        extern Preference<Color> WeakInfoOverlayBackgroundColor;
         extern Preference<Color> SelectedInfoOverlayTextColor;
         extern Preference<Color> SelectedInfoOverlayBackgroundColor;
         extern Preference<Color> LockedInfoOverlayTextColor;
@@ -75,10 +79,8 @@ namespace TrenchBroom {
         extern Preference<Color> SelectedHandleColor;
         extern Preference<Color> OccludedSelectedHandleColor;
 
-        extern Preference<Color> ClipPlaneColor;
+        extern Preference<Color> ClipHandleColor;
         extern Preference<Color> ClipFaceColor;
-        extern Preference<Color> ClipEdgeColor;
-        extern Preference<Color> ClipOccludedEdgeColor;
         
         extern Preference<Color> ResizeHandleColor;
         extern Preference<float> RotateHandleRadius;
@@ -96,6 +98,7 @@ namespace TrenchBroom {
         
         extern Preference<float> Brightness;
         extern Preference<float> GridAlpha;
+        extern Preference<Color> GridColor2D;
         
         extern Preference<int> TextureMinFilter;
         extern Preference<int> TextureMagFilter;
@@ -118,6 +121,7 @@ namespace TrenchBroom {
         extern Preference<bool> CameraPanInvertH;
         extern Preference<bool> CameraPanInvertV;
         extern Preference<float> CameraMoveSpeed;
+        extern Preference<bool> CameraMouseWheelInvert;
         extern Preference<bool> CameraEnableAltMove;
         extern Preference<bool> CameraAltMoveInvert;
         extern Preference<bool> CameraMoveInCursorDir;

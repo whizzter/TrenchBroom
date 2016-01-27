@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__Camera__
-#define __TrenchBroom__Camera__
+#ifndef TrenchBroom_Camera
+#define TrenchBroom_Camera
 
 #include "Color.h"
 #include "TrenchBroom.h"
@@ -39,7 +39,7 @@ namespace TrenchBroom {
                 Viewport();
                 Viewport(int i_x, int i_y, int i_width, int i_height);
                 
-                bool operator== (const Viewport& other) const;
+                bool operator==(const Viewport& other) const;
 
                 template <typename T>
                 bool contains(const T i_x, const T i_y, const T i_w, const T i_h) const {
@@ -51,6 +51,10 @@ namespace TrenchBroom {
                 bool contains(const T i_x, const T i_y) const {
                     return (i_x >= static_cast<T>(0) && i_x <= static_cast<T>(width) &&
                             i_y >= static_cast<T>(0) && i_y <= static_cast<T>(height));
+                }
+                
+                int minDimension() const {
+                    return width < height ? width : height;
                 }
             };
         public:
@@ -103,10 +107,11 @@ namespace TrenchBroom {
             
             Ray3f viewRay() const;
             Ray3f pickRay(int x, int y) const;
+            Ray3f pickRay(const Vec3f& point) const;
             float distanceTo(const Vec3f& point) const;
             float squaredDistanceTo(const Vec3f& point) const;
             float perpendicularDistanceTo(const Vec3f& point) const;
-            Vec3f defaultPoint() const;
+            Vec3f defaultPoint(const float distance = DefaultPointDistance) const;
             Vec3f defaultPoint(int x, int y) const;
             
             template <typename T>
@@ -144,7 +149,7 @@ namespace TrenchBroom {
             virtual ProjectionType doGetProjectionType() const = 0;
             
             virtual void doValidateMatrices(Mat4x4f& projectionMatrix, Mat4x4f& viewMatrix) const = 0;
-            virtual Ray3f doGetPickRay(int x, int y) const = 0;
+            virtual Ray3f doGetPickRay(const Vec3f& point) const = 0;
             virtual void doComputeFrustumPlanes(Plane3f& topPlane, Plane3f& rightPlane, Plane3f& bottomPlane, Plane3f& leftPlane) const = 0;
             
             virtual void doRenderFrustum(RenderContext& renderContext, Vbo& vbo, float size, const Color& color) const = 0;
@@ -154,4 +159,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__Camera__) */
+#endif /* defined(TrenchBroom_Camera) */

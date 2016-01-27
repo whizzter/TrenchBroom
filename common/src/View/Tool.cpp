@@ -19,12 +19,19 @@
 
 #include "Tool.h"
 
+#include "IO/ResourceUtils.h"
+
+#include <wx/bookctrl.h>
+#include <wx/panel.h>
+
 #include <cassert>
 
 namespace TrenchBroom {
     namespace View {
         Tool::Tool(const bool initiallyActive) :
-        m_active(initiallyActive) {}
+        m_active(initiallyActive),
+        m_book(NULL),
+        m_pageIndex(0) {}
 
         Tool::~Tool() {}
         
@@ -54,12 +61,36 @@ namespace TrenchBroom {
             refreshViewsNotifier(this);
         }
 
+        void Tool::createPage(wxBookCtrlBase* book) {
+            assert(m_book == NULL);
+            
+            m_book = book;
+            m_pageIndex = m_book->GetPageCount();
+            m_book->AddPage(doCreatePage(m_book), "");
+        }
+        
+        void Tool::showPage() {
+            m_book->SetSelection(m_pageIndex);
+        }
+
+        wxBitmap Tool::icon() const {
+            return IO::loadImageResource(doGetIconName());
+        }
+
         bool Tool::doActivate() {
             return true;
         }
         
         bool Tool::doDeactivate() {
             return true;
+        }
+
+        wxWindow* Tool::doCreatePage(wxWindow* parent) {
+            return new wxPanel(parent);
+        }
+
+        String Tool::doGetIconName() const {
+            return "NoTool.png";
         }
     }
 }

@@ -199,7 +199,7 @@ namespace TrenchBroom {
                     if (rowIt != m_rows.end()) {
                         rowIt->merge(attribute.value(), nameMutable, valueMutable);
                     } else {
-                        const String& tooltip = attributeDefinition != NULL ? attributeDefinition->description() : EmptyString;
+                        const String tooltip = Assets::AttributeDefinition::safeFullDescription(attributeDefinition);
                         m_rows.push_back(AttributeRow(attribute.name(), attribute.value(),
                                                       nameMutable, valueMutable,
                                                       tooltip, false, attributables.size()));
@@ -224,7 +224,7 @@ namespace TrenchBroom {
                             continue;
                         
                         const String value = Assets::AttributeDefinition::defaultValue(*propertyDef);
-                        const String& tooltip = propertyDef->description();
+                        const String tooltip = Assets::AttributeDefinition::safeFullDescription(propertyDef.get());
                         m_rows.push_back(AttributeRow(name, value, false, true, tooltip, true, attributables.size()));
                         ++m_defaultRowCount;
                     }
@@ -351,7 +351,9 @@ namespace TrenchBroom {
             const Model::AttributableNodeList attributables = document->allSelectedAttributableNodes();
             assert(!attributables.empty());
             
-            const SetBool ignoreUpdates(m_ignoreUpdates);
+            // Ignoring the updates here fails if the user changes the entity classname because in that
+            // case, we must really refresh everything from the entity.
+            // const SetBool ignoreUpdates(m_ignoreUpdates);
             if (col == 0)
                 renameAttribute(rowIndex, value.ToStdString(), attributables);
             else
@@ -363,7 +365,7 @@ namespace TrenchBroom {
         }
         
         bool EntityAttributeGridTable::InsertRows(const size_t pos, const size_t numRows) {
-            assert(pos < m_rows.totalRowCount());
+            assert(pos <= m_rows.totalRowCount());
             
             MapDocumentSPtr document = lock(m_document);
 

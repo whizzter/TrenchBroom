@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__BrushRenderer__
-#define __TrenchBroom__BrushRenderer__
+#ifndef TrenchBroom_BrushRenderer
+#define TrenchBroom_BrushRenderer
 
 #include "Color.h"
 #include "Model/ModelTypes.h"
@@ -27,7 +27,6 @@
 
 namespace TrenchBroom {
     namespace Model {
-        class BrushEdge;
         class EditorContext;
     }
     
@@ -42,12 +41,10 @@ namespace TrenchBroom {
             public:
                 virtual ~Filter();
                 
-                bool show(const Model::Brush* brush) const;
                 bool show(const Model::BrushFace* face) const;
                 bool show(const Model::BrushEdge* edge) const;
                 bool transparent(const Model::Brush* brush) const;
             private:
-                virtual bool doShow(const Model::Brush* brush) const = 0;
                 virtual bool doShow(const Model::BrushFace* face) const = 0;
                 virtual bool doShow(const Model::BrushEdge* edge) const = 0;
                 virtual bool doIsTransparent(const Model::Brush* brush) const = 0;
@@ -63,6 +60,7 @@ namespace TrenchBroom {
                 
                 bool visible(const Model::Brush* brush) const;
                 bool visible(const Model::BrushFace* face) const;
+                bool visible(const Model::BrushEdge* edge) const;
                 
                 bool editable(const Model::Brush* brush) const;
                 bool editable(const Model::BrushFace* face) const;
@@ -79,20 +77,27 @@ namespace TrenchBroom {
             public:
                 NoFilter(bool transparent);
             private:
-                bool doShow(const Model::Brush* brush) const;
                 bool doShow(const Model::BrushFace* face) const;
                 bool doShow(const Model::BrushEdge* edge) const;
                 bool doIsTransparent(const Model::Brush* brush) const;
             };
         private:
+            class FilterWrapper;
+            class CountVertices;
+            class CollectVertices;
+            class CountIndices;
+            class CollectIndices;
+        private:
             Filter* m_filter;
-            Model::BrushSet m_brushes;
+            Model::BrushList m_brushes;
+            VertexArray m_vertexArray;
             FaceRenderer m_opaqueFaceRenderer;
             FaceRenderer m_transparentFaceRenderer;
-            EdgeRenderer m_edgeRenderer;
+            IndexedEdgeRenderer m_edgeRenderer;
             bool m_valid;
             
             Color m_faceColor;
+            bool m_showEdges;
             Color m_edgeColor;
             bool m_grayscale;
             bool m_tint;
@@ -106,7 +111,8 @@ namespace TrenchBroom {
             template <typename FilterT>
             BrushRenderer(const FilterT& filter) :
             m_filter(new FilterT(filter)),
-            m_valid(false),
+            m_valid(true),
+            m_showEdges(true),
             m_grayscale(false),
             m_tint(false),
             m_showOccludedEdges(false),
@@ -117,40 +123,19 @@ namespace TrenchBroom {
             
             ~BrushRenderer();
 
-            void addBrush(Model::Brush* brush);
-            void removeBrush(Model::Brush* brush);
-            void updateBrush(Model::Brush* brush);
-            
-            template <typename I>
-            void addBrushes(I cur, I end, const size_t count) {
-                // m_brushes.reserve(m_brushes.size() + count);
-                // m_brushes.insert(m_brushes.end(), cur, end);
-                m_brushes.insert(cur, end);
-                invalidate();
-            }
-            
-            template <typename I>
-            void removeBrushes(I cur, I end) {
-                // const Model::BrushList::iterator rem = VectorUtils::removeAll(m_brushes.begin(), m_brushes.end(), cur, end);
-                // m_brushes.erase(rem, m_brushes.end());
-                m_brushes.erase(cur, end);
-                invalidate();
-            }
-            
-            template <typename I>
-            void updateBrushes(I cur, I end) {
-                invalidate();
-            }
-            
-            void invalidate();
+            void addBrushes(const Model::BrushList& brushes);
+            void setBrushes(const Model::BrushList& brushes);
             void clear();
             
+            void invalidate();
+            
             void setFaceColor(const Color& faceColor);
+            void setShowEdges(bool showEdges);
             void setEdgeColor(const Color& edgeColor);
             void setGrayscale(bool grayscale);
             void setTint(bool tint);
             void setTintColor(const Color& tintColor);
-            void setShowOccludedEdges(bool renderOccludedEdges);
+            void setShowOccludedEdges(bool showOccludedEdges);
             void setOccludedEdgeColor(const Color& occludedEdgeColor);
             void setTransparencyAlpha(float transparencyAlpha);
             void setShowHiddenBrushes(bool showHiddenBrushes);
@@ -159,9 +144,12 @@ namespace TrenchBroom {
         private:
             void renderFaces(RenderBatch& renderBatch);
             void renderEdges(RenderBatch& renderBatch);
+            
             void validate();
+            void validateVertices();
+            void validateIndices();
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__BrushRenderer__) */
+#endif /* defined(TrenchBroom_BrushRenderer) */

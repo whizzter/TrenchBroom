@@ -17,13 +17,13 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__SwitchableMapViewContainer__
-#define __TrenchBroom__SwitchableMapViewContainer__
+#ifndef TrenchBroom_SwitchableMapViewContainer
+#define TrenchBroom_SwitchableMapViewContainer
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
 #include "View/MapViewLayout.h"
-#include "View/ViewEffectsService.h"
+#include "View/MapView.h"
 #include "View/ViewTypes.h"
 
 #include <wx/panel.h>
@@ -43,12 +43,13 @@ namespace TrenchBroom {
     
     namespace View {
         class GLContextManager;
+        class Inspector;
         class MapViewContainer;
         class MapViewBar;
         class MapViewToolBox;
         class Tool;
         
-        class SwitchableMapViewContainer : public wxPanel, public ViewEffectsService {
+        class SwitchableMapViewContainer : public wxPanel, public MapView {
         private:
             Logger* m_logger;
             MapDocumentWPtr m_document;
@@ -64,29 +65,54 @@ namespace TrenchBroom {
             SwitchableMapViewContainer(wxWindow* parent, Logger* logger, MapDocumentWPtr document, GLContextManager& contextManager);
             ~SwitchableMapViewContainer();
             
+            void connectTopWidgets(Inspector* inspector);
+            
+            bool viewportHasFocus() const;
             void switchToMapView(MapViewLayout viewId);
             
-            void setToolBoxDropTarget();
-            void clearDropTarget();
-
-            Vec3 pasteObjectsDelta(const BBox3& bounds) const;
-            
-            void centerCameraOnSelection();
-            void moveCameraToPosition(const Vec3& position);
+            bool anyToolActive() const;
+            void deactivateTool();
+            bool createComplexBrushToolActive() const;
+            bool canToggleCreateComplexBrushTool() const;
+            void toggleCreateComplexBrushTool();
+            bool clipToolActive() const;
+            bool canToggleClipTool() const;
+            void toggleClipTool();
+            bool rotateObjectsToolActive() const;
+            bool canToggleRotateObjectsTool() const;
+            void toggleRotateObjectsTool();
+            bool vertexToolActive() const;
+            bool canToggleVertexTool() const;
+            void toggleVertexTool();
             
             bool canMoveCameraToNextTracePoint() const;
             bool canMoveCameraToPreviousTracePoint() const;
             void moveCameraToNextTracePoint();
             void moveCameraToPreviousTracePoint();
+
+            bool canMaximizeCurrentView() const;
+            bool currentViewMaximized() const;
+            void toggleMaximizeCurrentView();
         private:
             void bindObservers();
             void unbindObservers();
-            void preferenceDidChange(const IO::Path& path);
             void refreshViews(Tool* tool);
+        private: // implement MapView interface
+            bool doGetIsCurrent() const;
+            void doSetToolBoxDropTarget();
+            void doClearDropTarget();
+            bool doCanSelectTall();
+            void doSelectTall();
+            bool doCanFlipObjects() const;
+            void doFlipObjects(Math::Direction direction);
+            Vec3 doGetPasteObjectsDelta(const BBox3& bounds, const BBox3& referenceBounds) const;
+            void doFocusCameraOnSelection();
+            void doMoveCameraToPosition(const Vec3& position);
+            void doMoveCameraToCurrentTracePoint();
         private: // implement ViewEffectsService interface
             void doFlashSelection();
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__SwitchableMapViewContainer__) */
+#endif /* defined(TrenchBroom_SwitchableMapViewContainer) */

@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__ParallelTexCoordSystem__
-#define __TrenchBroom__ParallelTexCoordSystem__
+#ifndef TrenchBroom_ParallelTexCoordSystem
+#define TrenchBroom_ParallelTexCoordSystem
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
@@ -47,8 +47,8 @@ namespace TrenchBroom {
             
             friend class ParallelTexCoordSystemSnapshot;
         public:
-            ParallelTexCoordSystem(const Vec3& xAxis, const Vec3& yAxis);
-            ParallelTexCoordSystem(const Vec3& point0, const Vec3& point1, const Vec3& point2);
+            ParallelTexCoordSystem(const Vec3& point0, const Vec3& point1, const Vec3& point2, const BrushFaceAttributes& attribs);
+            ParallelTexCoordSystem(const Vec3& xAxis, const Vec3& yAxis, const BrushFaceAttributes& attribs);
         private:
             TexCoordSystem* doClone() const;
             TexCoordSystemSnapshot* doTakeSnapshot();
@@ -57,11 +57,20 @@ namespace TrenchBroom {
             Vec3 getYAxis() const;
             Vec3 getZAxis() const;
 
+            void doResetTextureAxes(const Vec3& normal);
+            void doResetTextureAxesToParaxial(const Vec3& normal, float angle);
+            void doResetTextureAxesToParallel(const Vec3& normal, float angle);
+
             bool isRotationInverted(const Vec3& normal) const;
             Vec2f doGetTexCoords(const Vec3& point, const BrushFaceAttributes& attribs) const;
             
             void doSetRotation(const Vec3& normal, float oldAngle, float newAngle);
+            void applyRotation(const Vec3& normal, FloatType angle);
+            
             void doTransform(const Plane3& oldBoundary, const Mat4x4& transformation, BrushFaceAttributes& attribs, bool lockTexture, const Vec3& invariant);
+            float computeTextureAngle(const Plane3& oldBoundary, const Mat4x4& transformation) const;
+            Mat4x4 computeNonTextureRotation(const Vec3& oldNormal, const Vec3& newNormal, const Mat4x4& rotation) const;
+            
             void doUpdateNormal(const Vec3& oldNormal, const Vec3& newNormal, const BrushFaceAttributes& attribs);
 
             void doShearTexture(const Vec3& normal, const Vec2f& factors);
@@ -72,4 +81,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__ParallelTexCoordSystem__) */
+#endif /* defined(TrenchBroom_ParallelTexCoordSystem) */

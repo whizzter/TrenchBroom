@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__StringMultiMap__
-#define __TrenchBroom__StringMultiMap__
+#ifndef TrenchBroom_StringMultiMap
+#define TrenchBroom_StringMultiMap
 
 #include "CollectionUtils.h"
 #include "Exceptions.h"
@@ -121,10 +121,10 @@ namespace TrenchBroom {
                         removeValue(value);
                     }
                     
-                    if (m_values.empty() && m_children.size() == 1)
+                    if (!m_key.empty() && m_values.empty() && m_children.size() == 1)
                         mergeNode();
                 }
-                return m_values.empty() && m_children.empty();
+                return !m_key.empty() && m_values.empty() && m_children.empty();
             }
             
             void queryExact(const String& key, ValueSet& result) const {
@@ -335,4 +335,4 @@ namespace TrenchBroom {
     };
 }
 
-#endif /* defined(__TrenchBroom__StringMultiMap__) */
+#endif /* defined(TrenchBroom_StringMultiMap) */

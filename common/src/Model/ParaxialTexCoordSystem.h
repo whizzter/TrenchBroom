@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__ParaxialTexCoordSystem__
-#define __TrenchBroom__ParaxialTexCoordSystem__
+#ifndef TrenchBroom_ParaxialTexCoordSystem
+#define TrenchBroom_ParaxialTexCoordSystem
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
@@ -31,14 +31,13 @@ namespace TrenchBroom {
         class ParaxialTexCoordSystem : public TexCoordSystem {
         private:
             static const Vec3 BaseAxes[];
-            static const bool Orientations[];
             
             size_t m_index;
             Vec3 m_xAxis;
             Vec3 m_yAxis;
         public:
-            ParaxialTexCoordSystem(const Vec3& point0, const Vec3& point1, const Vec3& point2);
-            ParaxialTexCoordSystem(const Vec3& normal);
+            ParaxialTexCoordSystem(const Vec3& point0, const Vec3& point1, const Vec3& point2, const BrushFaceAttributes& attribs);
+            ParaxialTexCoordSystem(const Vec3& normal, const BrushFaceAttributes& attribs);
 
             static size_t planeNormalIndex(const Vec3& normal);
             static void axes(size_t index, Vec3& xAxis, Vec3& yAxis);
@@ -51,12 +50,15 @@ namespace TrenchBroom {
             Vec3 getYAxis() const;
             Vec3 getZAxis() const;
             
+            void doResetTextureAxes(const Vec3& normal);
+            void doResetTextureAxesToParaxial(const Vec3& normal, float angle);
+            void doResetTextureAxesToParallel(const Vec3& normal, float angle);
+
             bool isRotationInverted(const Vec3& normal) const;
             Vec2f doGetTexCoords(const Vec3& point, const BrushFaceAttributes& attribs) const;
             
             void doSetRotation(const Vec3& normal, float oldAngle, float newAngle);
             void doTransform(const Plane3& oldBoundary, const Mat4x4& transformation, BrushFaceAttributes& attribs, bool lockTexture, const Vec3& invariant);
-            bool flipXAxis(size_t oldIndex, size_t newIndex) const;
             
             void doUpdateNormal(const Vec3& oldNormal, const Vec3& newNormal, const BrushFaceAttributes& attribs);
             
@@ -69,4 +71,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__QuakeTexCoordPolicy__) */
+#endif /* defined(TrenchBroom_QuakeTexCoordPolicy) */

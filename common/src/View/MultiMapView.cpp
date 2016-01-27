@@ -26,7 +26,8 @@
 namespace TrenchBroom {
     namespace View {
         MultiMapView::MultiMapView(wxWindow* parent) :
-        MapViewContainer(parent) {}
+        MapViewContainer(parent),
+        m_maximizedView(NULL) {}
         
         MultiMapView::~MultiMapView() {}
 
@@ -68,18 +69,23 @@ namespace TrenchBroom {
                 mapView->clearDropTarget();
             }
         }
-
-        Vec3 MultiMapView::doGetPasteObjectsDelta(const BBox3& bounds) const {
-            MapView* current = currentMapView();
-            assert(current != NULL);
-            return current->pasteObjectsDelta(bounds);
+        
+        bool MultiMapView::doCanSelectTall() {
+            if (currentMapView() == NULL)
+                return false;
+            return currentMapView()->canSelectTall();
         }
         
-        void MultiMapView::doCenterCameraOnSelection() {
+        void MultiMapView::doSelectTall() {
+            if (currentMapView() != NULL)
+                currentMapView()->selectTall();
+        }
+
+        void MultiMapView::doFocusCameraOnSelection() {
             MapViewList::const_iterator it, end;
             for (it = m_mapViews.begin(), end = m_mapViews.end(); it != end; ++it) {
                 MapView* mapView = *it;
-                mapView->centerCameraOnSelection();
+                mapView->focusCameraOnSelection();
             }
         }
         
@@ -99,7 +105,25 @@ namespace TrenchBroom {
             }
         }
 
-        MapView* MultiMapView::currentMapView() const {
+        bool MultiMapView::doCanMaximizeCurrentView() const {
+            return m_maximizedView != NULL || currentMapView() != NULL;
+        }
+        
+        bool MultiMapView::doCurrentViewMaximized() const {
+            return m_maximizedView != NULL;
+        }
+        
+        void MultiMapView::doToggleMaximizeCurrentView() {
+            if (m_maximizedView != NULL) {
+                doRestoreViews();
+                m_maximizedView = NULL;
+            } else {
+                m_maximizedView = currentMapView();
+                doMaximizeView(m_maximizedView);
+            }
+        }
+
+        MapView* MultiMapView::doGetCurrentMapView() const {
             MapViewList::const_iterator it, end;
             for (it = m_mapViews.begin(), end = m_mapViews.end(); it != end; ++it) {
                 MapView* mapView = *it;

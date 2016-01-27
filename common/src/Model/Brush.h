@@ -17,14 +17,15 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__Brush__
-#define __TrenchBroom__Brush__
+#ifndef TrenchBroom_Brush
+#define TrenchBroom_Brush
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
 #include "Hit.h"
+#include "ProjectingSequence.h"
 #include "Model/BrushContentType.h"
-#include "Model/BrushGeometryTypes.h"
+#include "Model/BrushGeometry.h"
 #include "Model/Node.h"
 #include "Model/Object.h"
 
@@ -32,12 +33,32 @@ namespace TrenchBroom {
     namespace Model {
         struct BrushAlgorithmResult;
         class BrushContentTypeBuilder;
-        class BrushGeometry;
+        class ModelFactory;
         class PickResult;
         
         class Brush : public Node, public Object {
+        private:
+            friend class SetTempFaceLinks;
         public:
             static const Hit::HitType BrushHit;
+        private:
+            struct ProjectToVertex : public ProjectingSequenceProjector<BrushVertex*, BrushVertex*> {
+                static BrushVertex*& project(BrushVertex*& vertex);
+            };
+            
+            struct ProjectToEdge : public ProjectingSequenceProjector<BrushEdge*, BrushEdge*> {
+                static BrushEdge*& project(BrushEdge*& edge);
+            };
+            
+            class AddFaceToGeometryCallback;
+            class AddFacesToGeometry;
+            class CanMoveBoundaryCallback;
+            class CanMoveBoundary;
+            class MoveVerticesCallback;
+            class QueryCallback;
+        public:
+            typedef ConstProjectingSequence<BrushVertexList, ProjectToVertex> VertexList;
+            typedef ConstProjectingSequence<BrushEdgeList, ProjectToEdge> EdgeList;
         private:
             BrushFaceList m_faces;
             BrushGeometry* m_geometry;
@@ -46,9 +67,6 @@ namespace TrenchBroom {
             mutable BrushContentType::FlagType m_contentType;
             mutable bool m_transparent;
             mutable bool m_contentTypeValid;
-            
-            class Contains;
-            class Intersects;
         public:
             Brush(const BBox3& worldBounds, const BrushFaceList& faces);
             ~Brush();
@@ -60,6 +78,10 @@ namespace TrenchBroom {
             const BrushFaceList& faces() const;
             void setFaces(const BBox3& worldBounds, const BrushFaceList& faces);
 
+            BrushFace* findFaceByNormal(const Vec3& normal) const;
+            
+            bool fullySpecified() const;
+            
             void faceDidChange();
         private:
             void addFaces(const BrushFaceList& faces);
@@ -89,6 +111,12 @@ namespace TrenchBroom {
             
             void detachFaces(const BrushFaceList& faces);
             void detachFace(BrushFace* face);
+        public: // clone face attributes from matching faces of other brushes
+            void cloneFaceAttributesFrom(const BrushList& brushes);
+            void cloneFaceAttributesFrom(const Brush* brush);
+            void cloneInvertedFaceAttributesFrom(const BrushList& brushes);
+            void cloneInvertedFaceAttributesFrom(const Brush* brush);
+            BrushFace* findFaceWithBoundary(const Plane3& boundary) const;
         public: // clipping
             bool clip(const BBox3& worldBounds, BrushFace* face);
         public: // move face along normal
@@ -97,10 +125,10 @@ namespace TrenchBroom {
         public:
             // geometry access
             size_t vertexCount() const;
-            const BrushVertexList& vertices() const;
+            VertexList vertices() const;
             
             size_t edgeCount() const;
-            const BrushEdgeList& edges() const;
+            EdgeList edges() const;
             
             bool containsPoint(const Vec3& point) const;
             
@@ -122,11 +150,18 @@ namespace TrenchBroom {
             Polygon3::List moveFaces(const BBox3& worldBounds, const Polygon3::List& facePositions, const Vec3& delta);
             bool canSplitFace(const BBox3& worldBounds, const Polygon3& facePosition, const Vec3& delta);
             Vec3 splitFace(const BBox3& worldBounds, const Polygon3& facePosition, const Vec3& delta);
+            
+            // CSG operations
+            BrushList subtract(const ModelFactory& factory, const BBox3& worldBounds, const String& defaultTextureName, const Brush* subtrahend) const;
+            bool intersect(const BBox3& worldBounds, const Brush* brush);
+            BrushList partition(const ModelFactory& factory, const BBox3& worldBounds, const String& defaultTextureName, const Brush* other) const;
         private:
-            void processBrushAlgorithmResult(const BBox3& worldBounds, const BrushAlgorithmResult& result);
-            void invalidateFaces();
+            Brush* createBrush(const ModelFactory& factory, const BBox3& worldBounds, const String& defaultTextureName, const BrushGeometry& geometry, const Brush* subtrahend) const;
+        private:
+            void updateFacesFromGeometry(const BBox3& worldBounds);
+            void updatePointsFromVertices(const BBox3& worldBounds);
         public: // brush geometry
-            void rebuildGeometry(const BBox3& worldBounds);
+            bool rebuildGeometry(const BBox3& worldBounds);
             void findIntegerPlanePoints(const BBox3& worldBounds);
         private:
             bool checkGeometry() const;
@@ -141,6 +176,7 @@ namespace TrenchBroom {
             void validateContentType() const;
         private: // implement Node interface
             const String& doGetName() const;
+            const BBox3& doGetBounds() const;
             
             Node* doClone(const BBox3& worldBounds) const;
             NodeSnapshot* doTakeSnapshot();
@@ -157,14 +193,14 @@ namespace TrenchBroom {
             void doAccept(NodeVisitor& visitor);
             void doAccept(ConstNodeVisitor& visitor) const;
         private: // implement Object interface
-            const BBox3& doGetBounds() const;
             void doPick(const Ray3& ray, PickResult& pickResult) const;
             FloatType doIntersectWithRay(const Ray3& ray) const;
 
             struct BrushFaceHit {
                 BrushFace* face;
                 FloatType distance;
-                BrushFaceHit(BrushFace* i_face = NULL, FloatType i_distance = Math::nan<FloatType>());
+				BrushFaceHit();
+                BrushFaceHit(BrushFace* i_face, FloatType i_distance);
             };
 
             BrushFaceHit findFaceHit(const Ray3& ray) const;
@@ -174,10 +210,17 @@ namespace TrenchBroom {
             Group* doGetGroup() const;
             
             void doTransform(const Mat4x4& transformation, bool lockTextures, const BBox3& worldBounds);
+
+            class Contains;
             bool doContains(const Node* node) const;
+            
+            class Intersects;
             bool doIntersects(const Node* node) const;
+        private:
+            Brush(const Brush&);
+            Brush& operator=(const Brush&);
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__Brush__) */
+#endif /* defined(TrenchBroom_Brush) */

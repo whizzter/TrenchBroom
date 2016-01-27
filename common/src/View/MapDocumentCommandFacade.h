@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__MapDocumentCommandFacade__
-#define __TrenchBroom__MapDocumentCommandFacade__
+#ifndef TrenchBroom_MapDocumentCommandFacade
+#define TrenchBroom_MapDocumentCommandFacade
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
@@ -27,6 +27,7 @@
 #include "Model/Node.h"
 #include "View/CommandProcessor.h"
 #include "View/MapDocument.h"
+#include "View/UndoableCommand.h"
 
 namespace TrenchBroom {
     namespace Model {
@@ -81,6 +82,7 @@ namespace TrenchBroom {
             Model::NodeList findRemovableEmptyParentNodes(const Model::ParentChildrenMap& nodes) const;
         public: // Node Visibility
             Model::VisibilityMap setVisibilityState(const Model::NodeList& nodes, Model::VisibilityState visibilityState);
+            Model::VisibilityMap setVisibilityEnsured(const Model::NodeList& nodes);
             void restoreVisibilityState(const Model::VisibilityMap& nodes);
             Model::LockStateMap setLockState(const Model::NodeList& nodes, Model::LockState lockState);
             void restoreLockState(const Model::LockStateMap& nodes);
@@ -98,7 +100,7 @@ namespace TrenchBroom {
         public: // entity attributes
             Model::EntityAttributeSnapshot::Map performSetAttribute(const Model::AttributeName& name, const Model::AttributeValue& value);
             Model::EntityAttributeSnapshot::Map performRemoveAttribute(const Model::AttributeName& name);
-            Model::EntityAttributeSnapshot::Map performConvertColorRange(const Model::AttributeName& name, Model::ColorRange::Type colorRange);
+            Model::EntityAttributeSnapshot::Map performConvertColorRange(const Model::AttributeName& name, Assets::ColorRange::Type colorRange);
             void performRenameAttribute(const Model::AttributeName& oldName, const Model::AttributeName& newName);
             void restoreAttributes(const Model::EntityAttributeSnapshot::Map& attributes);
         public: // brush resizing
@@ -148,9 +150,9 @@ namespace TrenchBroom {
             void doEndTransaction();
             void doRollbackTransaction();
 
-            bool doSubmit(UndoableCommand* command);
+            bool doSubmit(UndoableCommand::Ptr command);
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__MapDocumentCommandFacade__) */
+#endif /* defined(TrenchBroom_MapDocumentCommandFacade) */

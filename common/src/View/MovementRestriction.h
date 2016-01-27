@@ -17,40 +17,44 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__MovementRestriction__
-#define __TrenchBroom__MovementRestriction__
+#ifndef TrenchBroom_MovementRestriction
+#define TrenchBroom_MovementRestriction
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
 
+class wxKeyEvent;
+
 namespace TrenchBroom {
-    namespace Renderer {
-        class Camera;
-    }
-    
     namespace View {
         class MovementRestriction {
         private:
             typedef enum {
-                Restriction_None,
-                Restriction_LeftRight,
-                Restriction_ForwardBack
+                Restriction_None = 0,
+                Restriction_X    = 1,
+                Restriction_Y    = 2,
+                Restriction_Z    = 3
             } Restriction;
             
-            Restriction m_horizontalRestriction;
-            Vec3 m_xAxis;
-            Vec3 m_yAxis;
+            Restriction m_restriction;
             bool m_verticalRestriction;
         public:
             MovementRestriction();
             
-            void toggleHorizontalRestriction(const Renderer::Camera& camera);
-            void setVerticalRestriction(const bool verticalRestriction);
+            void toggleRestriction();
+            void toggleVerticalRestriction(bool verticalRestriction);
+            void toggleRestriction(Math::Axis::Type axis) ;
             
-            bool isRestricted(const Math::Axis::Type axis) const;
+            bool isRestricted(Math::Axis::Type axis) const;
             Vec3 apply(const Vec3& v) const;
+            
+        private:
+            const Vec3& xAxis() const;
+            const Vec3& yAxis() const;
+            const Vec3& zAxis() const;
+            bool canMoveAlong(Math::Axis::Type axis) const;
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__MovementRestriction__) */
+#endif /* defined(TrenchBroom_MovementRestriction) */

@@ -21,6 +21,7 @@
 
 #include "Macros.h"
 #include "Model/AttributableNode.h"
+#include "Model/CollectMatchingNodesVisitor.h"
 #include "Model/EditorContext.h"
 #include "Model/Entity.h"
 #include "Model/NodeVisitor.h"
@@ -64,10 +65,10 @@ namespace TrenchBroom {
             m_valid = false;
         }
 
-        void EntityLinkRenderer::doPrepare(Vbo& vbo) {
+        void EntityLinkRenderer::doPrepareVertices(Vbo& vertexVbo) {
             if (!m_valid) {
                 validate();
-                m_entityLinks.prepare(vbo);
+                m_entityLinks.prepare(vertexVbo);
             }
         }
 
@@ -78,36 +79,43 @@ namespace TrenchBroom {
             shader.set("CameraPosition", renderContext.camera().position());
             shader.set("MaxDistance", 6000.0f);
 
-            glDisable(GL_DEPTH_TEST);
+            glAssert(glDisable(GL_DEPTH_TEST));
             shader.set("Alpha", 0.4f);
-            m_entityLinks.render();
+            m_entityLinks.render(GL_LINES);
             
-            glEnable(GL_DEPTH_TEST);
+            glAssert(glEnable(GL_DEPTH_TEST));
             shader.set("Alpha", 1.0f);
-            m_entityLinks.render();
+            m_entityLinks.render(GL_LINES);
         }
 
         void EntityLinkRenderer::validate() {
-            m_entityLinks = VertexArray::copy(GL_LINES, links());
+            Vertex::List links;
+            getLinks(links);
+            m_entityLinks = VertexArray::swap(links);
             m_valid = true;
         }
         
+        class EntityLinkRenderer::MatchEntities {
+        public:
+            bool operator()(const Model::Entity* entity) { return true; }
+            bool operator()(const Model::Node* node) { return false; }
+        };
+        
+        class EntityLinkRenderer::CollectEntitiesVisitor : public Model::CollectMatchingNodesVisitor<MatchEntities, Model::UniqueNodeCollectionStrategy> {};
+
         class EntityLinkRenderer::CollectLinksVisitor : public Model::NodeVisitor {
         protected:
             const Model::EditorContext& m_editorContext;
         private:
             const Color& m_defaultColor;
             const Color& m_selectedColor;
-            Vertex::List m_vertices;
+            Vertex::List& m_links;
         protected:
-            CollectLinksVisitor(const Model::EditorContext& editorContext, const Color& defaultColor, const Color& selectedColor) :
+            CollectLinksVisitor(const Model::EditorContext& editorContext, const Color& defaultColor, const Color& selectedColor, Vertex::List& links) :
             m_editorContext(editorContext),
             m_defaultColor(defaultColor),
-            m_selectedColor(selectedColor) {}
-        public:
-            const Vertex::List& vertices() const {
-                return m_vertices;
-            }
+            m_selectedColor(selectedColor),
+            m_links(links) {}
         private:
             void doVisit(Model::World* world)   {}
             void doVisit(Model::Layer* layer)   {}
@@ -126,15 +134,15 @@ namespace TrenchBroom {
                 const Color& sourceColor = anySelected ? m_selectedColor : m_defaultColor;
                 Color targetColor = anySelected ? m_selectedColor : m_defaultColor;
                 
-                m_vertices.push_back(Vertex(source->linkSourceAnchor(), sourceColor));
-                m_vertices.push_back(Vertex(target->linkTargetAnchor(), targetColor));
+                m_links.push_back(Vertex(source->linkSourceAnchor(), sourceColor));
+                m_links.push_back(Vertex(target->linkTargetAnchor(), targetColor));
             }
         };
         
         class EntityLinkRenderer::CollectAllLinksVisitor : public CollectLinksVisitor {
         public:
-            CollectAllLinksVisitor(const Model::EditorContext& editorContext, const Color& defaultColor, const Color& selectedColor) :
-            CollectLinksVisitor(editorContext, defaultColor, selectedColor) {}
+            CollectAllLinksVisitor(const Model::EditorContext& editorContext, const Color& defaultColor, const Color& selectedColor, Vertex::List& links) :
+            CollectLinksVisitor(editorContext, defaultColor, selectedColor, links) {}
         private:
             void visitEntity(Model::Entity* entity) {
                 if (m_editorContext.visible(entity)) {
@@ -157,8 +165,8 @@ namespace TrenchBroom {
         private:
             Model::NodeSet m_visited;
         public:
-            CollectTransitiveSelectedLinksVisitor(const Model::EditorContext& editorContext, const Color& defaultColor, const Color& selectedColor) :
-            CollectLinksVisitor(editorContext, defaultColor, selectedColor) {}
+            CollectTransitiveSelectedLinksVisitor(const Model::EditorContext& editorContext, const Color& defaultColor, const Color& selectedColor, Vertex::List& links) :
+            CollectLinksVisitor(editorContext, defaultColor, selectedColor, links) {}
         private:
             void visitEntity(Model::Entity* entity) {
                 if (m_editorContext.visible(entity)) {
@@ -197,8 +205,8 @@ namespace TrenchBroom {
         
         class EntityLinkRenderer::CollectDirectSelectedLinksVisitor : public CollectLinksVisitor {
         public:
-            CollectDirectSelectedLinksVisitor(const Model::EditorContext& editorContext, const Color& defaultColor, const Color& selectedColor) :
-            CollectLinksVisitor(editorContext, defaultColor, selectedColor) {}
+            CollectDirectSelectedLinksVisitor(const Model::EditorContext& editorContext, const Color& defaultColor, const Color& selectedColor, Vertex::List& links) :
+            CollectLinksVisitor(editorContext, defaultColor, selectedColor, links) {}
         private:
             void visitEntity(Model::Entity* entity) {
                 if ((entity->selected() || entity->descendantSelected())) {
@@ -228,53 +236,61 @@ namespace TrenchBroom {
             }
         };
         
-        EntityLinkRenderer::Vertex::List EntityLinkRenderer::links() const {
+        void EntityLinkRenderer::getLinks(Vertex::List& links) const {
             View::MapDocumentSPtr document = lock(m_document);
             const Model::EditorContext& editorContext = document->editorContext();
             switch (editorContext.entityLinkMode()) {
                 case Model::EditorContext::EntityLinkMode_All:
-                    return allLinks();
+                    getAllLinks(links);
+                    break;
                 case Model::EditorContext::EntityLinkMode_Transitive:
-                    return transitiveSelectedLinks();
+                    getTransitiveSelectedLinks(links);
+                    break;
                 case Model::EditorContext::EntityLinkMode_Direct:
-                    return directSelectedLinks();
+                    getDirectSelectedLinks(links);
+                    break;
                 case Model::EditorContext::EntityLinkMode_None:
-                    return Vertex::List(0);
-                DEFAULT_SWITCH()
+                    break;
+                switchDefault()
             }
         }
         
-        EntityLinkRenderer::Vertex::List EntityLinkRenderer::allLinks() const {
+        void EntityLinkRenderer::getAllLinks(Vertex::List& links) const {
             View::MapDocumentSPtr document = lock(m_document);
             const Model::EditorContext& editorContext = document->editorContext();
             
-            CollectAllLinksVisitor visitor(editorContext, m_defaultColor, m_selectedColor);
+            CollectAllLinksVisitor collectLinks(editorContext, m_defaultColor, m_selectedColor, links);
             
             Model::World* world = document->world();
-            world->acceptAndRecurse(visitor);
-            return visitor.vertices();
+            if (world != NULL)
+                world->acceptAndRecurse(collectLinks);
         }
         
-        EntityLinkRenderer::Vertex::List EntityLinkRenderer::transitiveSelectedLinks() const {
+        void EntityLinkRenderer::getTransitiveSelectedLinks(Vertex::List& links) const {
             View::MapDocumentSPtr document = lock(m_document);
             const Model::EditorContext& editorContext = document->editorContext();
             
-            CollectTransitiveSelectedLinksVisitor visitor(editorContext, m_defaultColor, m_selectedColor);
+            CollectTransitiveSelectedLinksVisitor visitor(editorContext, m_defaultColor, m_selectedColor, links);
+            collectSelectedLinks(visitor);
+        }
+        
+        void EntityLinkRenderer::getDirectSelectedLinks(Vertex::List& links) const {
+            View::MapDocumentSPtr document = lock(m_document);
+            const Model::EditorContext& editorContext = document->editorContext();
+            
+            CollectDirectSelectedLinksVisitor visitor(editorContext, m_defaultColor, m_selectedColor, links);
+            collectSelectedLinks(visitor);
+        }
 
-            const Model::EntityList& selectedEntities = document->selectedNodes().entities();
-            Model::Node::acceptAndRecurse(selectedEntities.begin(), selectedEntities.end(), visitor);
-            return visitor.vertices();
-        }
-        
-        EntityLinkRenderer::Vertex::List EntityLinkRenderer::directSelectedLinks() const {
+        void EntityLinkRenderer::collectSelectedLinks(CollectLinksVisitor& collectLinks) const {
             View::MapDocumentSPtr document = lock(m_document);
-            const Model::EditorContext& editorContext = document->editorContext();
             
-            CollectDirectSelectedLinksVisitor visitor(editorContext, m_defaultColor, m_selectedColor);
+            const Model::NodeList& selectedNodes = document->selectedNodes().nodes();
+            CollectEntitiesVisitor collectEntities;
+            Model::Node::acceptAndEscalate(selectedNodes.begin(), selectedNodes.end(), collectEntities);
             
-            const Model::EntityList& selectedEntities = document->selectedNodes().entities();
-            Model::Node::acceptAndRecurse(selectedEntities.begin(), selectedEntities.end(), visitor);
-            return visitor.vertices();
+            const Model::NodeList& selectedEntities = collectEntities.nodes();
+            Model::Node::accept(selectedEntities.begin(), selectedEntities.end(), collectLinks);
         }
     }
 }

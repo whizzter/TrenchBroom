@@ -21,10 +21,13 @@
 
 #include "PreferenceManager.h"
 #include "Preferences.h"
+#include "Renderer/Camera.h"
 #include "Renderer/FontDescriptor.h"
 #include "Renderer/PointHandleRenderer.h"
 #include "Renderer/PrimitiveRenderer.h"
 #include "Renderer/RenderBatch.h"
+#include "Renderer/RenderContext.h"
+#include "Renderer/TextAnchor.h"
 #include "Renderer/TextRenderer.h"
 
 namespace TrenchBroom {
@@ -41,7 +44,8 @@ namespace TrenchBroom {
         m_pointHandleRenderer(new PointHandleRenderer()),
         m_primitiveRenderer(new PrimitiveRenderer()),
         m_foregroundColor(1.0f, 1.0f, 1.0f, 1.0f),
-        m_backgroundColor(0.0f, 0.0f, 0.0f, 1.0f) {}
+        m_backgroundColor(0.0f, 0.0f, 0.0f, 1.0f),
+        m_lineWidth(1.0f) {}
         
         RenderService::~RenderService() {
             flush();
@@ -59,10 +63,18 @@ namespace TrenchBroom {
             m_lineWidth = lineWidth;
         }
 
+        void RenderService::renderString(const AttrString& string, const Vec3f& position) {
+            renderString(string, SimpleTextAnchor(position, TextAlignment::Bottom, Vec2f(0.0f, 16.0f)));
+        }
+
         void RenderService::renderString(const AttrString& string, const TextAnchor& position) {
             m_textRenderer->renderString(m_renderContext, m_foregroundColor, m_backgroundColor, string, position);
         }
         
+        void RenderService::renderStringOnTop(const AttrString& string, const Vec3f& position) {
+            renderStringOnTop(string, SimpleTextAnchor(position, TextAlignment::Bottom, Vec2f(0.0f, 16.0f)));
+        }
+
         void RenderService::renderStringOnTop(const AttrString& string, const TextAnchor& position) {
             m_textRenderer->renderStringOnTop(m_renderContext, m_foregroundColor, m_backgroundColor, string, position);
         }
@@ -90,9 +102,37 @@ namespace TrenchBroom {
         }
 
         void RenderService::renderCoordinateSystem(const BBox3f& bounds) {
-            m_primitiveRenderer->renderCoordinateSystem(pref(Preferences::XAxisColor), pref(Preferences::YAxisColor), pref(Preferences::ZAxisColor), m_lineWidth, bounds);
+            const Color& x = pref(Preferences::XAxisColor);
+            const Color& y = pref(Preferences::YAxisColor);
+            const Color& z = pref(Preferences::ZAxisColor);
+            
+            if (m_renderContext.render2D()) {
+                const Camera& camera = m_renderContext.camera();
+                const Math::Axis::Type axis = camera.direction().firstComponent();
+                switch (axis) {
+                    case Math::Axis::AX:
+                        m_primitiveRenderer->renderCoordinateSystemYZ(y, z, m_lineWidth, bounds);
+                        break;
+                    case Math::Axis::AY:
+                        m_primitiveRenderer->renderCoordinateSystemXZ(x, z, m_lineWidth, bounds);
+                        break;
+                    default:
+                        m_primitiveRenderer->renderCoordinateSystemXY(x, y, m_lineWidth, bounds);
+                        break;
+                }
+            } else {
+                m_primitiveRenderer->renderCoordinateSystem3D(x, y, z, m_lineWidth, bounds);
+            }
         }
         
+        void RenderService::renderPolygonOutline(const Vec3f::List& positions) {
+            m_primitiveRenderer->renderPolygon(m_foregroundColor, m_lineWidth, positions);
+        }
+
+        void RenderService::renderFilledPolygon(const Vec3f::List& positions) {
+            m_primitiveRenderer->renderFilledPolygon(m_foregroundColor, positions);
+        }
+
         void RenderService::renderBounds(const BBox3f& bounds) {
             const Vec3f p1(bounds.min.x(), bounds.min.y(), bounds.min.z());
             const Vec3f p2(bounds.min.x(), bounds.min.y(), bounds.max.z());

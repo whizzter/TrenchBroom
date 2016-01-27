@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__World__
-#define __TrenchBroom__World__
+#ifndef TrenchBroom_World
+#define TrenchBroom_World
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
@@ -60,7 +60,9 @@ namespace TrenchBroom {
             class InvalidateAllIssuesVisitor;
             void invalidateAllIssues();
         private: // implement Node interface
+            const BBox3& doGetBounds() const;
             Node* doClone(const BBox3& worldBounds) const;
+            Node* doCloneRecursively(const BBox3& worldBounds) const;
             bool doCanAddChild(const Node* child) const;
             bool doCanRemoveChild(const Node* child) const;
             bool doRemoveIfEmpty() const;
@@ -87,8 +89,8 @@ namespace TrenchBroom {
             Group* doCreateGroup(const String& name) const;
             Entity* doCreateEntity() const;
             Brush* doCreateBrush(const BBox3& worldBounds, const BrushFaceList& faces) const;
-            BrushFace* doCreateFace(const Vec3& point1, const Vec3& point2, const Vec3& point3, const String& textureName) const;
-            BrushFace* doCreateFace(const Vec3& point1, const Vec3& point2, const Vec3& point3, const String& textureName, const Vec3& texAxisX, const Vec3& texAxisY) const;
+            BrushFace* doCreateFace(const Vec3& point1, const Vec3& point2, const Vec3& point3, const BrushFaceAttributes& attribs) const;
+            BrushFace* doCreateFace(const Vec3& point1, const Vec3& point2, const Vec3& point3, const BrushFaceAttributes& attribs, const Vec3& texAxisX, const Vec3& texAxisY) const;
         private:
             World(const World&);
             World& operator=(const World&);
@@ -96,4 +98,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__World__) */
+#endif /* defined(TrenchBroom_World) */

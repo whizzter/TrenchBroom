@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__FgdParser__
-#define __TrenchBroom__FgdParser__
+#ifndef TrenchBroom_FgdParser
+#define TrenchBroom_FgdParser
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
@@ -62,6 +62,15 @@ namespace TrenchBroom {
         private:
             typedef FgdTokenizer::Token Token;
             
+            template <typename T>
+            struct DefaultValue {
+                bool present;
+                T value;
+                
+                DefaultValue() : present(false) {}
+                DefaultValue(const T& i_value) : present(true), value(i_value) {}
+            };
+            
             Color m_defaultEntityColor;
             FgdTokenizer m_tokenizer;
             EntityDefinitionClassInfoMap m_baseClasses;
@@ -70,31 +79,41 @@ namespace TrenchBroom {
             FgdParser(const String& str, const Color& defaultEntityColor);
         private:
             TokenNameMap tokenNames() const;
-            Assets::EntityDefinitionList doParseDefinitions();
+            Assets::EntityDefinitionList doParseDefinitions(ParserStatus& status);
             
-            Assets::EntityDefinition* parseDefinition();
-            Assets::EntityDefinition* parseSolidClass();
-            Assets::EntityDefinition* parsePointClass();
-            EntityDefinitionClassInfo parseBaseClass();
-            EntityDefinitionClassInfo parseClass();
-            StringList parseSuperClasses();
-            Assets::ModelDefinitionList parseModels();
-            Assets::ModelDefinitionPtr parseStaticModel();
-            Assets::ModelDefinitionPtr parseDynamicModel();
-            Assets::AttributeDefinitionMap parseProperties();
-            Assets::AttributeDefinitionPtr parseTargetSourceAttribute(const String& name);
-            Assets::AttributeDefinitionPtr parseTargetDestinationAttribute(const String& name);
-            Assets::AttributeDefinitionPtr parseStringAttribute(const String& name);
-            Assets::AttributeDefinitionPtr parseIntegerAttribute(const String& name);
-            Assets::AttributeDefinitionPtr parseFloatAttribute(const String& name);
-            Assets::AttributeDefinitionPtr parseChoicesAttribute(const String& name);
-            Assets::AttributeDefinitionPtr parseFlagsAttribute(const String& name);
+            Assets::EntityDefinition* parseDefinition(ParserStatus& status);
+            Assets::EntityDefinition* parseSolidClass(ParserStatus& status);
+            Assets::EntityDefinition* parsePointClass(ParserStatus& status);
+            EntityDefinitionClassInfo parseBaseClass(ParserStatus& status);
+            EntityDefinitionClassInfo parseClass(ParserStatus& status);
+            void skipMainClass(ParserStatus& status);
             
-            Vec3 parseVector();
-            BBox3 parseSize();
-            Color parseColor();
+            StringList parseSuperClasses(ParserStatus& status);
+            Assets::ModelDefinitionList parseModels(ParserStatus& status);
+            Assets::ModelDefinitionPtr parseStaticModel(ParserStatus& status);
+            Assets::ModelDefinitionPtr parseDynamicModel(ParserStatus& status);
+            void skipClassAttribute(ParserStatus& status);
+            
+            Assets::AttributeDefinitionMap parseProperties(ParserStatus& status);
+            Assets::AttributeDefinitionPtr parseTargetSourceAttribute(ParserStatus& status, const String& name);
+            Assets::AttributeDefinitionPtr parseTargetDestinationAttribute(ParserStatus& status, const String& name);
+            Assets::AttributeDefinitionPtr parseStringAttribute(ParserStatus& status, const String& name);
+            Assets::AttributeDefinitionPtr parseIntegerAttribute(ParserStatus& status, const String& name);
+            Assets::AttributeDefinitionPtr parseFloatAttribute(ParserStatus& status, const String& name);
+            Assets::AttributeDefinitionPtr parseChoicesAttribute(ParserStatus& status, const String& name);
+            Assets::AttributeDefinitionPtr parseFlagsAttribute(ParserStatus& status, const String& name);
+            Assets::AttributeDefinitionPtr parseUnknownAttribute(ParserStatus& status, const String& name);
+            
+            String parseAttributeDescription(ParserStatus& status);
+            DefaultValue<String> parseDefaultStringValue(ParserStatus& status);
+            DefaultValue<int> parseDefaultIntegerValue(ParserStatus& status);
+            DefaultValue<float> parseDefaultFloatValue(ParserStatus& status);
+            
+            Vec3 parseVector(ParserStatus& status);
+            BBox3 parseSize(ParserStatus& status);
+            Color parseColor(ParserStatus& status);
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__FgdParser__) */
+#endif /* defined(TrenchBroom_FgdParser) */

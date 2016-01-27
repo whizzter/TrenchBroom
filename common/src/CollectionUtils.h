@@ -353,6 +353,11 @@ namespace VectorUtils {
         vec.erase(CollectionUtils::removeAll(vec.begin(), vec.end(), items.begin(), items.end()), vec.end());
     }
     
+    template <typename T, typename I>
+    void eraseAll(std::vector<T*>& vec, I cur, I end) {
+        vec.erase(CollectionUtils::removeAll(vec.begin(), vec.end(), cur, end), vec.end());
+    }
+    
     template <typename T>
     std::vector<T*> eraseAll(const std::vector<T*>& vec, const std::vector<T*>& items) {
         std::vector<T*> result(vec);
@@ -730,33 +735,151 @@ namespace VectorUtils {
 }
 
 namespace SetUtils {
+    template<typename T, typename C, typename A>
+    class set_insert_iterator : public std::output_iterator_tag {
+    public:
+        typedef set_insert_iterator<T,C,A> _my_type;
+        typedef std::set<T,C,A> container_type;
+        typedef typename container_type::const_reference const_reference;
+        typedef typename container_type::value_type value_type;
+    private:
+        container_type& m_set;
+    public:
+        set_insert_iterator(std::set<T,C,A>& set)
+        : m_set(set) {}
+        
+        _my_type& operator=(const value_type& value) {
+            m_set.insert(value);
+            return *this;
+        }
+
+        /*
+        container_type& operator=(value_type&& value)
+        {
+            m_set.insert(std::forward<value_type>(value));
+            return (*this);
+        }
+        */
+        
+        _my_type& operator*() {
+            return *this;
+        }
+        
+        _my_type& operator++() {
+            return *this;
+        }
+        
+        _my_type& operator++(int) {
+            return *this;
+        }
+    };
+    
+    template<typename T, typename C, typename A>
+    inline set_insert_iterator<T,C,A> set_inserter(std::set<T,C,A>& set) {
+        return set_insert_iterator<T,C,A>(set);
+    }
+    
+    template <typename T, typename C>
+    bool subset(const std::set<T,C>& lhs, const std::set<T,C>& rhs) {
+        if (lhs.size() > rhs.size())
+            return false;
+
+        typedef typename std::set<T,C>::const_iterator Iter;
+        Iter lIt = lhs.begin();
+        Iter lEnd = lhs.end();
+        Iter rIt = rhs.begin();
+        Iter rEnd = rhs.end();
+        
+        C cmp;
+        
+        while (lIt != lEnd) {
+            // forward rhs until we find the element
+            while (rIt != rEnd && cmp(*rIt, *lIt)) ++rIt;
+            if (rIt == rEnd || cmp(*lIt, *rIt)) // we didn't find it
+                return false;
+            
+            // we found it, continue with next element
+            ++lIt;
+        }
+        return true;
+    }
+    
+    template <typename T>
+    void makeSet(const std::vector<T>& vec, std::set<T>& result) {
+        result.insert(vec.begin(), vec.end());
+    }
+
     template <typename T>
     std::set<T> makeSet(const std::vector<T>& vec) {
         std::set<T> result;
-        result.insert(vec.begin(), vec.end());
+        makeSet(vec);
         return result;
     }
-    
-    template <typename T>
-    void minus(const std::set<T>& lhs, const std::set<T>& rhs, std::set<T>& result) {
-        std::set_difference(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), std::insert_iterator<std::set<T> >(result, result.end()));
+
+    template <typename T, typename C>
+    void makeSet(const std::vector<T>& vec, std::set<T,C>& result) {
+        result.insert(vec.begin(), vec.end());
     }
     
-    template <typename T>
-    std::set<T> minus(const std::set<T>& lhs, const std::set<T>& rhs) {
-        std::set<T> result;
+	template <typename T, typename C>
+    void minus(const std::set<T, C>& lhs, const std::set<T, C>& rhs, std::set<T, C>& result) {
+        std::set_difference(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), std::insert_iterator<std::set<T, C> >(result, result.end()));
+    }
+    
+    template <typename T, typename C>
+    std::set<T, C> minus(const std::set<T, C>& lhs, const std::set<T, C>& rhs) {
+        std::set<T, C> result;
         minus(lhs, rhs, result);
         return result;
     }
     
-    template <typename T>
-    void intersection(const std::set<T>& lhs, const std::set<T>& rhs, std::set<T>& result) {
-        std::set_intersection(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), std::insert_iterator<std::set<T> >(result, result.end()));
+    template <typename T, typename C>
+    std::set<T, C> minus(const std::set<T, C>& lhs, const T& rhs) {
+        std::set<T, C> result(lhs);
+        result.erase(rhs);
+        return result;
     }
     
-    template <typename T>
-    void intersection(const std::set<T>& lhs, const std::set<T>& rhs, std::vector<T>& result) {
+    template <typename T, typename C>
+    void merge(const std::set<T, C>& lhs, const std::set<T, C>& rhs, std::set<T, C>& result) {
+        result.insert(lhs.begin(), lhs.end());
+        result.insert(rhs.begin(), rhs.end());
+    }
+
+    template <typename T, typename C>
+    std::set<T, C> merge(const std::set<T, C>& lhs, const std::set<T, C>& rhs) {
+        std::set<T, C> result;
+        merge(lhs, rhs, result);
+        return result;
+    }
+    
+    template <typename T, typename C>
+    void intersection(const std::set<T, C>& lhs, const std::set<T, C>& rhs, std::set<T, C>& result) {
+        std::set_intersection(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), std::insert_iterator<std::set<T, C> >(result, result.end()));
+    }
+    
+    template <typename T, typename C>
+    void intersection(const std::set<T, C>& lhs, const std::set<T, C>& rhs, std::vector<T>& result) {
         std::set_intersection(lhs.begin(), lhs.end(), rhs.begin(), rhs.end(), std::back_inserter(result));
+    }
+
+    template <typename T, typename C>
+    typename std::set<T,C>::iterator erase(std::set<T,C>& set, typename std::set<T,C>::iterator it) {
+        typename std::set<T,C>::iterator tmp = it;
+        ++it;
+        set.erase(tmp);
+        return it;
+    }
+
+    template <typename T, typename C>
+    void clearAndDelete(std::set<T*, C>& set) {
+        std::for_each(set.begin(), set.end(), Utils::Deleter<T>());
+        set.clear();
+    }
+    
+    template <typename T, typename C>
+    void deleteAll(const std::set<T*, C>& set) {
+        std::for_each(set.begin(), set.end(), Utils::Deleter<T>());
     }
 }
 
@@ -784,6 +907,11 @@ namespace MapUtils {
             VectorUtils::clearAndDelete(entry.second);
         }
     };
+
+    template <typename K, typename V>
+    bool contains(const std::map<K, V>& map, const K& key) {
+        return map.find(key) != map.end();
+    }
     
     template <typename K, typename V, typename L>
     const V& find(const std::map<K, V>& map, const L& key, const V& defaultValue) {
@@ -864,7 +992,7 @@ namespace MapUtils {
     }
 
     template <typename K, typename V>
-    bool insertOrReplace(std::map<K, V*>& map, const K& key, V* value) {
+    bool insertOrReplaceAndDelete(std::map<K, V*>& map, const K& key, V* value) {
         typedef std::map<K, V*> Map;
         typename Map::key_compare compare = map.key_comp();
         typename Map::iterator insertPos = map.lower_bound(key);
@@ -886,6 +1014,13 @@ namespace MapUtils {
         }
     }
 
+    template <typename K, typename V, typename C>
+    std::map<K,V,C> minus(const std::map<K,V,C>& lhs, const K& rhs) {
+        std::map<K,V,C> result(lhs);
+        result.erase(rhs);
+        return result;
+    }
+    
     template <typename K, typename V>
     bool removeAndDelete(std::map<K, V*>& map, const K& key) {
         typedef std::map<K, V*> Map;
@@ -896,6 +1031,21 @@ namespace MapUtils {
         delete it->second;
         map.erase(it);
         return true;
+    }
+    
+    template <typename K, typename V>
+    void merge(std::map<K, std::vector<V> >& map1, const std::map<K, std::vector<V> >& map2) {
+        typedef std::vector<V> Vector;
+        typedef std::map<K, Vector> Map;
+        
+        typename Map::const_iterator it, end;
+        for (it = map2.begin(), end = map2.end(); it != end; ++it) {
+            const K& key = it->first;
+            const Vector& vector = it->second;
+            
+            Vector& into = map1[key];
+            VectorUtils::append(into, vector);
+        }
     }
     
     template <typename K, typename V>

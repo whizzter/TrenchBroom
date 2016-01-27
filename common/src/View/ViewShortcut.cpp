@@ -40,15 +40,6 @@ namespace TrenchBroom {
             m_actions[ActionView_Map3D] = action;
         }
 
-        wxAcceleratorEntry ViewShortcut::acceleratorEntry(const ActionView view) const {
-            const Action& action = m_actions[view];
-            return shortcut().acceleratorEntry(action.id());
-        }
-        
-        bool ViewShortcut::appliesToContext(const int context) const {
-            return (context & m_context) != 0;
-        }
-
         void ViewShortcut::resetShortcut() {
         }
 
@@ -59,17 +50,23 @@ namespace TrenchBroom {
         bool ViewShortcut::doGetModifiable() const {
             return true;
         }
-        
-        int ViewShortcut::doGetRequiredModifiers() const {
-            return 0;
-        }
 
         wxString ViewShortcut::doGetActionDescription() const {
             return buildDescription(m_actions[ActionView_Map2D], m_actions[ActionView_Map3D]);
         }
         
+        wxString ViewShortcut::doGetJsonString() const {
+            return shortcut().asJsonString();
+        }
+
+        const Preference<KeyboardShortcut>& ViewShortcut::doGetPreference() const {
+            return m_preference;
+        }
+        
+
         const KeyboardShortcut& ViewShortcut::doGetShortcut() const {
-            return shortcut();
+            PreferenceManager& prefs = PreferenceManager::instance();
+            return prefs.get(m_preference);
         }
         
         void ViewShortcut::doUpdateShortcut(const KeyboardShortcut& shortcut) {
@@ -77,11 +74,11 @@ namespace TrenchBroom {
             prefs.set(m_preference, shortcut);
         }
 
-        const KeyboardShortcut& ViewShortcut::shortcut() const {
-            PreferenceManager& prefs = PreferenceManager::instance();
-            return prefs.get(m_preference);
+        wxAcceleratorEntry ViewShortcut::doGetAcceleratorEntry(const ActionView view) const {
+            const Action& action = m_actions[view];
+            return shortcut().acceleratorEntry(action.id());
         }
-
+        
         IO::Path ViewShortcut::path(const Action& action2D, const Action& action3D) const {
             return IO::Path("Controls/Map view") + IO::Path(buildDescription(action2D, action3D));
         }

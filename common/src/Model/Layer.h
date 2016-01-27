@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__Layer__
-#define __TrenchBroom__Layer__
+#ifndef TrenchBroom_Layer
+#define TrenchBroom_Layer
 
 #include "StringUtils.h"
 #include "Model/ModelTypes.h"
@@ -39,6 +39,7 @@ namespace TrenchBroom {
             void setName(const String& name);
         private: // implement Node interface
             const String& doGetName() const;
+            const BBox3& doGetBounds() const;
             
             Node* doClone(const BBox3& worldBounds) const;
             bool doCanAddChild(const Node* child) const;
@@ -47,11 +48,11 @@ namespace TrenchBroom {
             
             class AddNodeToOctree;
             class RemoveNodeFromOctree;
+            class UpdateNodeInOctree;
             
             void doChildWasAdded(Node* node);
             void doChildWillBeRemoved(Node* node);
-            void doChildWillChange(Node* node);
-            void doChildDidChange(Node* node);
+            void doChildBoundsDidChange(Node* node);
             
             bool doSelectable() const;
             
@@ -68,4 +69,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__Layer__) */
+#endif /* defined(TrenchBroom_Layer) */

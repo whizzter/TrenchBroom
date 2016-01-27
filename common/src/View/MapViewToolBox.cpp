@@ -18,9 +18,11 @@
  */
 
 #include "MapViewToolBox.h"
+#include "Model/EditorContext.h"
 #include "View/ClipTool.h"
-#include "View/CreateBrushTool.h"
+#include "View/CreateComplexBrushTool.h"
 #include "View/CreateEntityTool.h"
+#include "View/CreateSimpleBrushTool.h"
 #include "View/MoveObjectsTool.h"
 #include "View/ResizeBrushesTool.h"
 #include "View/RotateObjectsTool.h"
@@ -30,9 +32,11 @@
 namespace TrenchBroom {
     namespace View {
         MapViewToolBox::MapViewToolBox(MapDocumentWPtr document, wxBookCtrlBase* bookCtrl) :
+        m_document(document),
         m_clipTool(NULL),
-        m_createBrushTool(NULL),
+        m_createComplexBrushTool(NULL),
         m_createEntityTool(NULL),
+        m_createSimpleBrushTool(NULL),
         m_moveObjectsTool(NULL),
         m_resizeBrushesTool(NULL),
         m_rotateObjectsTool(NULL),
@@ -51,12 +55,16 @@ namespace TrenchBroom {
             return m_clipTool;
         }
 
-        CreateBrushTool* MapViewToolBox::createBrushTool() {
-            return m_createBrushTool;
+        CreateComplexBrushTool* MapViewToolBox::createComplexBrushTool() {
+            return m_createComplexBrushTool;
         }
         
         CreateEntityTool* MapViewToolBox::createEntityTool() {
             return m_createEntityTool;
+        }
+
+        CreateSimpleBrushTool* MapViewToolBox::createSimpleBrushTool() {
+            return m_createSimpleBrushTool;
         }
 
         MoveObjectsTool* MapViewToolBox::moveObjectsTool() {
@@ -79,12 +87,12 @@ namespace TrenchBroom {
             return m_vertexTool;
         }
 
-        void MapViewToolBox::toggleCreateBrushTool() {
-            toggleTool(m_createBrushTool);
+        void MapViewToolBox::toggleCreateComplexBrushTool() {
+            toggleTool(m_createComplexBrushTool);
         }
         
-        bool MapViewToolBox::createBrushToolActive() const {
-            return toolActive(m_createBrushTool);
+        bool MapViewToolBox::createComplexBrushToolActive() const {
+            return toolActive(m_createComplexBrushTool);
         }
 
         void MapViewToolBox::toggleClipTool() {
@@ -97,7 +105,7 @@ namespace TrenchBroom {
         
         void MapViewToolBox::toggleClipSide() {
             assert(clipToolActive());
-            m_clipTool->toggleClipSide();
+            m_clipTool->toggleSide();
         }
             
         void MapViewToolBox::performClip() {
@@ -105,9 +113,9 @@ namespace TrenchBroom {
             m_clipTool->performClip();
         }
         
-        void MapViewToolBox::deleteLastClipPoint() {
+        void MapViewToolBox::removeLastClipPoint() {
             assert(clipToolActive());
-            m_clipTool->deleteLastClipPoint();
+            m_clipTool->removeLastPoint();
         }
 
         void MapViewToolBox::toggleRotateObjectsTool() {
@@ -149,32 +157,37 @@ namespace TrenchBroom {
 
         void MapViewToolBox::createTools(MapDocumentWPtr document, wxBookCtrlBase* bookCtrl) {
             m_clipTool = new ClipTool(document);
-            m_createBrushTool = new CreateBrushTool(document);
+            m_createComplexBrushTool = new CreateComplexBrushTool(document);
             m_createEntityTool = new CreateEntityTool(document);
+            m_createSimpleBrushTool = new CreateSimpleBrushTool(document);
             m_moveObjectsTool = new MoveObjectsTool(document);
             m_resizeBrushesTool = new ResizeBrushesTool(document);
             m_rotateObjectsTool = new RotateObjectsTool(document);
             m_selectionTool = new SelectionTool(document);
             m_vertexTool = new VertexTool(document);
             
+            deactivateWhen(m_createComplexBrushTool, m_moveObjectsTool);
+            deactivateWhen(m_createComplexBrushTool, m_resizeBrushesTool);
+            deactivateWhen(m_createComplexBrushTool, m_createSimpleBrushTool);
             deactivateWhen(m_rotateObjectsTool, m_moveObjectsTool);
             deactivateWhen(m_rotateObjectsTool, m_resizeBrushesTool);
+            deactivateWhen(m_rotateObjectsTool, m_createSimpleBrushTool);
             deactivateWhen(m_vertexTool, m_moveObjectsTool);
             deactivateWhen(m_vertexTool, m_resizeBrushesTool);
+            deactivateWhen(m_vertexTool, m_createSimpleBrushTool);
             deactivateWhen(m_clipTool, m_moveObjectsTool);
             deactivateWhen(m_clipTool, m_resizeBrushesTool);
+            deactivateWhen(m_clipTool, m_createSimpleBrushTool);
             
-            m_moveObjectsTool->createPage(bookCtrl);
-            m_rotateObjectsTool->createPage(bookCtrl);
-            
-            addTool(m_moveObjectsTool);
-            addTool(m_rotateObjectsTool);
-            addTool(m_resizeBrushesTool);
-            addTool(m_createBrushTool);
-            addTool(m_clipTool);
-            addTool(m_vertexTool);
-            addTool(m_createEntityTool);
-            addTool(m_selectionTool);
+            registerTool(m_moveObjectsTool, bookCtrl);
+            registerTool(m_rotateObjectsTool, bookCtrl);
+            registerTool(m_resizeBrushesTool, bookCtrl);
+            registerTool(m_createComplexBrushTool, bookCtrl);
+            registerTool(m_clipTool, bookCtrl);
+            registerTool(m_vertexTool, bookCtrl);
+            registerTool(m_createEntityTool, bookCtrl);
+            registerTool(m_selectionTool, bookCtrl);
+            registerTool(m_createSimpleBrushTool, bookCtrl);
         }
         
         void MapViewToolBox::destroyTools() {
@@ -183,11 +196,17 @@ namespace TrenchBroom {
             delete m_rotateObjectsTool;
             delete m_resizeBrushesTool;
             delete m_moveObjectsTool;
+            delete m_createSimpleBrushTool;
             delete m_createEntityTool;
-            delete m_createBrushTool;
+            delete m_createComplexBrushTool;
             delete m_clipTool;
         }
         
+        void MapViewToolBox::registerTool(Tool* tool, wxBookCtrlBase* bookCtrl) {
+            tool->createPage(bookCtrl);
+            addTool(tool);
+        }
+
         void MapViewToolBox::bindObservers() {
             toolActivatedNotifier.addObserver(this, &MapViewToolBox::toolActivated);
             toolDeactivatedNotifier.addObserver(this, &MapViewToolBox::toolDeactivated);
@@ -199,12 +218,19 @@ namespace TrenchBroom {
         }
         
         void MapViewToolBox::toolActivated(Tool* tool) {
-            if (tool == m_rotateObjectsTool)
-                m_rotateObjectsTool->showPage();
+            updateEditorContext();
+            tool->showPage();
         }
         
         void MapViewToolBox::toolDeactivated(Tool* tool) {
+            updateEditorContext();
             m_moveObjectsTool->showPage();
+        }
+
+        void MapViewToolBox::updateEditorContext() {
+            MapDocumentSPtr document = lock(m_document);
+            Model::EditorContext& editorContext = document->editorContext();
+            editorContext.setBlockSelection(createComplexBrushToolActive());
         }
     }
 }

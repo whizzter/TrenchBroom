@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__HitFilter__
-#define __TrenchBroom__HitFilter__
+#ifndef TrenchBroom_HitFilter
+#define TrenchBroom_HitFilter
 
 #include "Hit.h"
 #include "SharedPointer.h"
@@ -64,6 +64,15 @@ namespace TrenchBroom {
             bool doMatches(const Hit& hit) const;
         };
         
+        class MinDistanceHitFilter : public HitFilter {
+        private:
+            FloatType m_minDistance;
+        public:
+            MinDistanceHitFilter(FloatType minDistance);
+        private:
+            bool doMatches(const Hit& hit) const;
+        };
+        
         class EditorContext;
 
         class ContextHitFilter : public HitFilter {
@@ -77,4 +86,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__HitFilter__) */
+#endif /* defined(TrenchBroom_HitFilter) */

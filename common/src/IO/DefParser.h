@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__DefParser__
-#define __TrenchBroom__DefParser__
+#ifndef TrenchBroom_DefParser
+#define TrenchBroom_DefParser
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
@@ -74,21 +74,28 @@ namespace TrenchBroom {
             DefParser(const String& str, const Color& defaultEntityColor);
         private:
             TokenNameMap tokenNames() const;
-            Assets::EntityDefinitionList doParseDefinitions();
+            Assets::EntityDefinitionList doParseDefinitions(ParserStatus& status);
             
-            Assets::EntityDefinition* parseDefinition();
-            Assets::AttributeDefinitionPtr parseSpawnflags();
-            void parseProperties(Assets::AttributeDefinitionMap& attributes, Assets::ModelDefinitionList& modelDefinitions, StringList& superClasses);
-            bool parseAttribute(Assets::AttributeDefinitionMap& attributes, Assets::ModelDefinitionList& modelDefinitions, StringList& superClasses);
+            Assets::EntityDefinition* parseDefinition(ParserStatus& status);
+            Assets::AttributeDefinitionPtr parseSpawnflags(ParserStatus& status);
+            void parserAttributes(ParserStatus& status, Assets::AttributeDefinitionMap& attributes, Assets::ModelDefinitionList& modelDefinitions, StringList& superClasses);
+            bool parseAttribute(ParserStatus& status, Assets::AttributeDefinitionMap& attributes, Assets::ModelDefinitionList& modelDefinitions, StringList& superClasses);
+            
+            void parseDefaultAttribute(ParserStatus& status);
+            void parseBaseAttribute(ParserStatus& status, StringList& superClasses);
+            void parseChoiceAttribute(ParserStatus& status, Assets::AttributeDefinitionMap& attributes);
+            void parseModelDefinitions(ParserStatus& status, Assets::ModelDefinitionList& modelDefinitions);
+            void parseStaticModelDefinition(ParserStatus& status, Assets::ModelDefinitionList& modelDefinitions);
+            void parseDynamicModelDefinition(ParserStatus& status, Assets::ModelDefinitionList& modelDefinitions);
             String parseDescription();
 
-            Vec3 parseVector();
-            BBox3 parseBounds();
-            Color parseColor();
+            Vec3 parseVector(ParserStatus& status);
+            BBox3 parseBounds(ParserStatus& status);
+            Color parseColor(ParserStatus& status);
             
             Token nextTokenIgnoringNewlines();
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__DefParser__) */
+#endif /* defined(TrenchBroom_DefParser) */

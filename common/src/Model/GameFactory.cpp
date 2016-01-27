@@ -88,36 +88,18 @@ namespace TrenchBroom {
             return pref.path() == prefPath;
         }
 
-        GamePtr GameFactory::detectGame(const IO::Path& path) const {
+        std::pair<String, MapFormat::Type> GameFactory::detectGame(const IO::Path& path) const {
             if (path.isEmpty() || !IO::Disk::fileExists(IO::Disk::fixPath(path)))
-                return GamePtr();
+                return std::make_pair("", MapFormat::Unknown);
             
-            const IO::MappedFile::Ptr file = IO::Disk::openFile(IO::Disk::fixPath(path));
-            if (file == NULL)
-                return GamePtr();
+            const IO::OpenFile file(path, false);
+            const String gameName = IO::readGameComment(file.file());
+            const String formatName = IO::readFormatComment(file.file());
+            const MapFormat::Type format = mapFormat(formatName);
+            if (gameName.empty() || format == MapFormat::Unknown)
+                return std::make_pair("", MapFormat::Unknown);
             
-            // we will try to detect a comment in the beginning of the file formatted like so:
-            // // Game: <string>\n
-            
-            // where <string> is the name of a game in the GameName array.
-            if (file->end() - file->begin() < 9)
-                return GamePtr();
-            
-            const char* cursor = file->begin();
-            char comment[10];
-            comment[9] = 0;
-            IO::readBytes(cursor, comment, 9);
-            
-            const String commentStr(comment);
-            if (commentStr != "// Game: ")
-                return GamePtr();
-            
-            StringStream name;
-            while (cursor < file->end() && *cursor != '\n')
-                name << *(cursor++);
-            
-            const String nameStr = StringUtils::trim(name.str());
-            return createGame(nameStr);
+            return std::make_pair(gameName, format);
         }
 
         GameFactory::GameFactory() {

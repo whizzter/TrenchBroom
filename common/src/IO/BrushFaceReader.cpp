@@ -21,6 +21,7 @@
 
 #include "Logger.h"
 #include "Model/Brush.h"
+#include "Model/BrushFace.h"
 #include "Model/Entity.h"
 #include "Model/Layer.h"
 #include "Model/ModelFactory.h"
@@ -38,8 +39,10 @@ namespace TrenchBroom {
             try {
                 readBrushFaces(m_factory->format(), worldBounds);
                 return m_brushFaces;
-            } catch (const ParserException&) {}
-            return Model::EmptyBrushFaceList;
+            } catch (const ParserException&) {
+                VectorUtils::clearAndDelete(m_brushFaces);
+                throw;
+            }
         }
         
         Model::ModelFactory* BrushFaceReader::initialize(const Model::MapFormat::Type format, const BBox3& worldBounds) {

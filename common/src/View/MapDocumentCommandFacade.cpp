@@ -303,10 +303,10 @@ namespace TrenchBroom {
             NodeChangeNotifier notifyParents(nodesWillChangeNotifier, nodesDidChangeNotifier, parents);
             
             Model::NodeList addedNodes;
-            Model::ParentChildrenMap::const_iterator it, end;
-            for (it = nodes.begin(), end = nodes.end(); it != end; ++it) {
-                Model::Node* parent = it->first;
-                const Model::NodeList& children = it->second;
+            Model::ParentChildrenMap::const_iterator pIt, pEnd;
+            for (pIt = nodes.begin(), pEnd = nodes.end(); pIt != pEnd; ++pIt) {
+                Model::Node* parent = pIt->first;
+                const Model::NodeList& children = pIt->second;
                 parent->addChildren(children);
                 VectorUtils::append(addedNodes, children);
             }
@@ -314,6 +314,7 @@ namespace TrenchBroom {
             setEntityDefinitions(addedNodes);
             setEntityModels(addedNodes);
             setTextures(addedNodes);
+            invalidateSelectionBounds();
 
             nodesWereAddedNotifier(addedNodes);
             return addedNodes;
@@ -336,6 +337,8 @@ namespace TrenchBroom {
                 parent->removeChildren(children.begin(), children.end());
             }
             
+            invalidateSelectionBounds();
+
             return removedNodes;
         }
         
@@ -382,6 +385,9 @@ namespace TrenchBroom {
             const Model::NodeList nodesToNotify = Model::collectChildren(nodes);
             const Model::NodeList parentsToNotify = VectorUtils::eraseAll(Model::collectParents(nodes), emptyParents);
             
+            Model::NodeList nodesWithChangedLockState;
+            Model::NodeList nodesWithChangedVisibilityState;
+            
             NodeChangeNotifier notifyParents(nodesWillChangeNotifier, nodesDidChangeNotifier, parentsToNotify);
             NodeChangeNotifier notifyNodes(nodesWillChangeNotifier, nodesDidChangeNotifier, nodesToNotify);
 
@@ -399,11 +405,22 @@ namespace TrenchBroom {
                     Model::Node* oldParent = child->parent();
                     assert(oldParent != NULL);
                     
+                    const bool wasLocked = child->locked();
+                    const bool wasHidden = child->hidden();
+                    
                     movedNodes[oldParent].push_back(child);
                     oldParent->removeChild(child);
                     newParent->addChild(child);
+                    
+                    if (wasLocked != child->locked())
+                        nodesWithChangedLockState.push_back(child);
+                    if (wasHidden != child->hidden())
+                        nodesWithChangedVisibilityState.push_back(child);
                 }
             }
+            
+            nodeLockingDidChangeNotifier(nodesWithChangedLockState);
+            nodeVisibilityDidChangeNotifier(nodesWithChangedVisibilityState);
             
             const Model::ParentChildrenMap removedNodes = performRemoveNodes(emptyParents);
             return ReparentResult(movedNodes, removedNodes);
@@ -457,6 +474,26 @@ namespace TrenchBroom {
             return result;
         }
         
+        Model::VisibilityMap MapDocumentCommandFacade::setVisibilityEnsured(const Model::NodeList& nodes) {
+            Model::VisibilityMap result;
+            
+            Model::NodeList changedNodes;
+            changedNodes.reserve(nodes.size());
+            
+            Model::NodeList::const_iterator it, end;
+            for (it = nodes.begin(), end = nodes.end(); it != end; ++it) {
+                Model::Node* node = *it;
+                const Model::VisibilityState oldState = node->visibilityState();
+                if (node->ensureVisible()) {
+                    changedNodes.push_back(node);
+                    result[node] = oldState;
+                }
+            }
+            
+            nodeVisibilityDidChangeNotifier(changedNodes);
+            return result;
+        }
+
         void MapDocumentCommandFacade::restoreVisibilityState(const Model::VisibilityMap& nodes) {
             Model::NodeList changedNodes;
             changedNodes.reserve(nodes.size());
@@ -567,10 +604,13 @@ namespace TrenchBroom {
 
         void MapDocumentCommandFacade::performPushGroup(Model::Group* group) {
             m_editorContext->pushGroup(group);
+            groupWasOpenedNotifier(group);
         }
         
         void MapDocumentCommandFacade::performPopGroup() {
+            Model::Group* previousGroup = m_editorContext->currentGroup();
             m_editorContext->popGroup();
+            groupWasClosedNotifier(previousGroup);
         }
 
         void MapDocumentCommandFacade::performTransform(const Mat4x4& transform, const bool lockTextures) {
@@ -631,7 +671,7 @@ namespace TrenchBroom {
             return snapshot;
         }
         
-        Model::EntityAttributeSnapshot::Map MapDocumentCommandFacade::performConvertColorRange(const Model::AttributeName& name, Model::ColorRange::Type colorRange) {
+        Model::EntityAttributeSnapshot::Map MapDocumentCommandFacade::performConvertColorRange(const Model::AttributeName& name, Assets::ColorRange::Type colorRange) {
             const Model::AttributableNodeList attributableNodes = allSelectedAttributableNodes();
             const Model::NodeList nodes(attributableNodes.begin(), attributableNodes.end());
             const Model::NodeList parents = collectParents(nodes.begin(), nodes.end());
@@ -718,6 +758,8 @@ namespace TrenchBroom {
                 brush->moveBoundary(m_worldBounds, face, delta, textureLock());
             }
             
+            invalidateSelectionBounds();
+
             return true;
         }
 
@@ -749,7 +791,7 @@ namespace TrenchBroom {
         }
 
         void MapDocumentCommandFacade::performChangeBrushFaceAttributes(const Model::ChangeBrushFaceAttributesRequest& request) {
-            const Model::BrushFaceList& faces = selectedBrushFaces();
+            const Model::BrushFaceList& faces = allSelectedBrushFaces();
             request.evaluate(faces);
             setTextures(faces);
             brushFacesDidChangeNotifier(faces);
@@ -790,6 +832,10 @@ namespace TrenchBroom {
                 VectorUtils::append(newVertexPositions, newPositions);
             }
             
+            invalidateSelectionBounds();
+
+            info("Snapped %u vertices", static_cast<unsigned int>(newVertexPositions.size()));
+            
             return newVertexPositions;
         }
 
@@ -809,6 +855,8 @@ namespace TrenchBroom {
                 VectorUtils::append(newVertexPositions, newPositions);
             }
             
+            invalidateSelectionBounds();
+
             return newVertexPositions;
         }
 
@@ -847,6 +895,8 @@ namespace TrenchBroom {
                 VectorUtils::append(newFacePositions, newPositions);
             }
             
+            invalidateSelectionBounds();
+
             return newFacePositions;
         }
 
@@ -869,6 +919,8 @@ namespace TrenchBroom {
                 }
             }
             
+            invalidateSelectionBounds();
+
             return newVertexPositions;
         }
 
@@ -891,6 +943,8 @@ namespace TrenchBroom {
                 }
             }
             
+            invalidateSelectionBounds();
+
             return newVertexPositions;
         }
 
@@ -906,6 +960,8 @@ namespace TrenchBroom {
                 Model::Brush* brush = *it;
                 brush->rebuildGeometry(m_worldBounds);
             }
+
+            invalidateSelectionBounds();
         }
 
         void MapDocumentCommandFacade::restoreSnapshot(Model::Snapshot* snapshot) {
@@ -919,9 +975,12 @@ namespace TrenchBroom {
                 snapshot->restoreNodes(m_worldBounds);
                 
                 invalidateSelectionBounds();
-            } else if (!m_selectedBrushFaces.empty()) {
+            }
+            
+            const Model::BrushFaceList brushFaces = allSelectedBrushFaces();
+            if (!brushFaces.empty()) {
                 snapshot->restoreBrushFaces();
-                brushFacesDidChangeNotifier(m_selectedBrushFaces);
+                brushFacesDidChangeNotifier(brushFaces);
             }
         }
 
@@ -929,7 +988,10 @@ namespace TrenchBroom {
             const Model::NodeList nodes(1, m_world);
             NodeChangeNotifier notifyNodes(nodesWillChangeNotifier, nodesDidChangeNotifier, nodes);
 
-             m_world->addOrUpdateAttribute(Model::AttributeNames::EntityDefinitions, spec.asString());
+            // to avoid backslashes being misinterpreted as escape sequences
+            const String formatted = StringUtils::replaceAll(spec.asString(), "\\", "/");
+            m_world->addOrUpdateAttribute(Model::AttributeNames::EntityDefinitions, formatted);
+            reloadEntityDefinitions();
             entityDefinitionsDidChangeNotifier();
         }
 
@@ -985,8 +1047,11 @@ namespace TrenchBroom {
             NodeChangeNotifier notifyNodes(nodesWillChangeNotifier, nodesDidChangeNotifier, nodes);
 
             unsetEntityDefinitions();
+            clearEntityModels();
             m_world->addOrUpdateAttribute(Model::AttributeNames::Mods, StringUtils::join(mods, ";"));
+            updateGameSearchPaths();
             setEntityDefinitions();
+            setEntityModels();
             modsDidChangeNotifier();
         }
 
@@ -1052,7 +1117,7 @@ namespace TrenchBroom {
             m_commandProcessor.rollbackGroup();
         }
 
-        bool MapDocumentCommandFacade::doSubmit(UndoableCommand* command) {
+        bool MapDocumentCommandFacade::doSubmit(UndoableCommand::Ptr command) {
             return m_commandProcessor.submitAndStoreCommand(command);
         }
     }

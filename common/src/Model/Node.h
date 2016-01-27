@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__Node__
-#define __TrenchBroom__Node__
+#ifndef TrenchBroom_Node
+#define TrenchBroom_Node
 
 #include "Model/ModelTypes.h"
 
@@ -55,10 +55,14 @@ namespace TrenchBroom {
             virtual ~Node();
         public: // getters
             const String& name() const;
+            const BBox3& bounds() const;
         public: // cloning and snapshots
             Node* clone(const BBox3& worldBounds) const;
+            Node* cloneRecursively(const BBox3& worldBounds) const;
             NodeSnapshot* takeSnapshot();
         protected:
+            void cloneAttributes(Node* node) const;
+            
             static NodeList clone(const BBox3& worldBounds, const NodeList& nodes);
             
             template <typename I, typename O>
@@ -120,13 +124,16 @@ namespace TrenchBroom {
             void doRemoveChild(Node* child);
             void clearChildren();
             
+            void childWillBeAdded(Node* node);
             void childWasAdded(Node* node);
             void childWillBeRemoved(Node* node);
             void childWasRemoved(Node* node);
             
+            void descendantWillBeAdded(Node* newParent, Node* node);
             void descendantWasAdded(Node* node);
             void descendantWillBeRemoved(Node* node);
             void descendantWasRemoved(Node* oldParent, Node* node);
+            bool shouldPropagateDescendantEvents() const;
             
             void incDescendantCount(size_t delta);
             void decDescendantCount(size_t delta);
@@ -144,14 +151,19 @@ namespace TrenchBroom {
                 NotifyNodeChange(Node* node);
                 ~NotifyNodeChange();
             };
-        private: // call these methods via the NotifyNodeChange class, it's much safer
+            
+            // call these methods via the NotifyNodeChange class, it's much safer
             void nodeWillChange();
             void nodeDidChange();
+            
+            void nodeBoundsDidChange();
         private:
             void childWillChange(Node* node);
             void childDidChange(Node* node);
             void descendantWillChange(Node* node);
             void descendantDidChange(Node* node);
+            
+            void childBoundsDidChange(Node* node);
         public: // selection
             bool selected() const;
             void select();
@@ -177,9 +189,11 @@ namespace TrenchBroom {
             bool selectable() const;
         public: // visibility, locking
             bool visible() const;
+            bool shown() const;
             bool hidden() const;
             VisibilityState visibilityState() const;
             bool setVisiblityState(VisibilityState visibility);
+            bool ensureVisible();
             
             bool editable() const;
             bool locked() const;
@@ -342,26 +356,34 @@ namespace TrenchBroom {
             void removeFromIndex(AttributableNode* attributable, const AttributeName& name, const AttributeValue& value);
         private: // subclassing interface
             virtual const String& doGetName() const = 0;
+            virtual const BBox3& doGetBounds() const = 0;
             
             virtual Node* doClone(const BBox3& worldBounds) const = 0;
+            virtual Node* doCloneRecursively(const BBox3& worldBounds) const;
             virtual NodeSnapshot* doTakeSnapshot();
             
             virtual bool doCanAddChild(const Node* child) const = 0;
             virtual bool doCanRemoveChild(const Node* child) const = 0;
             virtual bool doRemoveIfEmpty() const = 0;
             
+            virtual void doChildWillBeAdded(Node* node);
             virtual void doChildWasAdded(Node* node);
             virtual void doChildWillBeRemoved(Node* node);
             virtual void doChildWasRemoved(Node* node);
             
+            virtual void doDescendantWillBeAdded(Node* newParent, Node* node);
             virtual void doDescendantWasAdded(Node* node);
             virtual void doDescendantWillBeRemoved(Node* node);
             virtual void doDescendantWasRemoved(Node* oldParent, Node* node);
+            virtual bool doShouldPropagateDescendantEvents() const;
 
             virtual void doParentWillChange();
             virtual void doParentDidChange();
             virtual void doAncestorWillChange();
             virtual void doAncestorDidChange();
+            
+            virtual void doNodeBoundsDidChange();
+            virtual void doChildBoundsDidChange(Node* node);
             
             virtual void doChildWillChange(Node* node);
             virtual void doChildDidChange(Node* node);
@@ -387,4 +409,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__Node__) */
+#endif /* defined(TrenchBroom_Node) */

@@ -20,9 +20,8 @@
 #include "ResizeBrushesTool.h"
 
 #include "Model/Brush.h"
-#include "Model/BrushEdge.h"
 #include "Model/BrushFace.h"
-#include "Model/BrushVertex.h"
+#include "Model/BrushGeometry.h"
 #include "Model/CollectMatchingBrushFacesVisitor.h"
 #include "Model/FindMatchingBrushFaceVisitor.h"
 #include "Model/HitAdapter.h"
@@ -81,20 +80,20 @@ namespace TrenchBroom {
             void doVisit(const Model::Group* group)   {}
             void doVisit(const Model::Entity* entity) {}
             void doVisit(const Model::Brush* brush)   {
-                const Model::BrushEdgeList& edges = brush->edges();
-                Model::BrushEdgeList::const_iterator it, end;
+                const Model::Brush::EdgeList edges = brush->edges();
+                Model::Brush::EdgeList::const_iterator it, end;
                 for (it = edges.begin(), end = edges.end(); it != end; ++it)
                     visitEdge(*it);
             }
             
             void visitEdge(Model::BrushEdge* edge) {
-                Model::BrushFace* left = edge->leftFace();
-                Model::BrushFace* right = edge->rightFace();
+                Model::BrushFace* left = edge->firstFace()->payload();
+                Model::BrushFace* right = edge->secondFace()->payload();
                 const double leftDot = left->boundary().normal.dot(m_pickRay.direction);
                 const double rightDot = right->boundary().normal.dot(m_pickRay.direction);
                 
                 if ((leftDot > 0.0) != (rightDot > 0.0)) {
-                    const Ray3::LineDistance result = m_pickRay.distanceToSegment(edge->start->position, edge->end->position);
+                    const Ray3::LineDistance result = m_pickRay.distanceToSegment(edge->firstVertex()->position(), edge->secondVertex()->position());
                     if (!Math::isnan(result.distance) && result.distance < m_closest) {
                         m_closest = result.distance;
                         const Vec3 hitPoint = m_pickRay.pointAtDistance(result.rayDistance);
@@ -216,16 +215,14 @@ namespace TrenchBroom {
         bool ResizeBrushesTool::resize(const Ray3& pickRay, const Renderer::Camera& camera) {
             assert(!m_dragFaces.empty());
             
-            const Plane3 dragPlane = orthogonalDragPlane(m_dragOrigin, Vec3(camera.direction()));
-            
             Model::BrushFace* dragFace = m_dragFaces.front();
             const Vec3& faceNormal = dragFace->boundary().normal;
-            const FloatType rayPointDist = dragPlane.intersectWithRay(pickRay);
-            assert(!Math::isnan(rayPointDist));
             
-            const Vec3 rayPoint = pickRay.pointAtDistance(rayPointDist);
-            const Vec3 dragVector = rayPoint - m_dragOrigin;
-            const FloatType dragDist = dragVector.dot(faceNormal);
+            const Ray3::LineDistance distance = pickRay.distanceToLine(m_dragOrigin, faceNormal);
+            if (distance.parallel)
+                return true;
+            
+            const FloatType dragDist = distance.lineDistance;
             
             MapDocumentSPtr document = lock(m_document);
             const View::Grid& grid = document->grid();
@@ -286,8 +283,7 @@ namespace TrenchBroom {
             // first ensure that the drag can be applied at all
             for (fIt = m_dragFaces.begin(), fEnd = m_dragFaces.end(); fIt != fEnd; ++fIt) {
                 const Model::BrushFace* face = *fIt;
-                const Model::Brush* brush = face->brush();
-                if (!brush->canMoveBoundary(worldBounds, face, delta))
+                if (!Math::pos(face->boundary().normal.dot(delta)))
                     return false;
             }
             
@@ -305,7 +301,7 @@ namespace TrenchBroom {
                 newBrush->moveBoundary(worldBounds, newDragFace, delta, lockTextures);
                 const bool clipResult = newBrush->clip(worldBounds, clipFace);
                 assert(clipResult);
-                _UNUSED(clipResult);
+                unused(clipResult);
                 
                 newNodes[brush->parent()].push_back(newBrush);
                 newDragFaces.push_back(newDragFace);

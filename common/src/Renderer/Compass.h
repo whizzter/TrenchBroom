@@ -17,27 +17,22 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__Compass__
-#define __TrenchBroom__Compass__
-
-#include "Renderer/VertexArray.h"
+#ifndef TrenchBroom_Compass
+#define TrenchBroom_Compass
 
 #include "Color.h"
 #include "VecMath.h"
+#include "Renderer/IndexRangeRenderer.h"
 #include "Renderer/Renderable.h"
 
 namespace TrenchBroom {
-    namespace View {
-        class MovementRestriction;
-    }
-    
     namespace Renderer {
         class Camera;
         class RenderBatch;
         class RenderContext;
         class Vbo;
         
-        class Compass : public Renderable {
+        class Compass : public DirectRenderable {
         private:
             static const size_t m_segments;
             static const float m_shaftLength;
@@ -45,33 +40,32 @@ namespace TrenchBroom {
             static const float m_headLength;
             static const float m_headRadius;
 
-            const View::MovementRestriction& m_restriction;
-            
-            VertexArray m_strip;
-            VertexArray m_set;
-            VertexArray m_fans;
-            
-            VertexArray m_backgroundOutline;
-            VertexArray m_background;
-            
+            IndexRangeRenderer m_arrowRenderer;
+            IndexRangeRenderer m_backgroundRenderer;
+            IndexRangeRenderer m_backgroundOutlineRenderer;
             bool m_prepared;
         public:
-            Compass(const View::MovementRestriction& restriction);
+            Compass();
+            virtual ~Compass();
+            
             void render(RenderBatch& renderBatch);
         private: // implement Renderable interface
-            void doPrepare(Vbo& vbo);
+            void doPrepareVertices(Vbo& vertexVbo);
             void doRender(RenderContext& renderContext);
         private:
             void makeArrows();
             void makeBackground();
             
             Mat4x4f cameraRotationMatrix(const Camera& camera) const;
+        protected:
             void renderBackground(RenderContext& renderContext);
             void renderSolidAxis(RenderContext& renderContext, const Mat4x4f& transformation, const Color& color);
             void renderAxisOutline(RenderContext& renderContext, const Mat4x4f& transformation, const Color& color);
             void renderAxis(RenderContext& renderContext, const Mat4x4f& transformation);
+        private:
+            virtual void doRenderCompass(RenderContext& renderContext, const Mat4x4f& cameraTransformation) = 0;
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__Compass__) */
+#endif /* defined(TrenchBroom_Compass) */

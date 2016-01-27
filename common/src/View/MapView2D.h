@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__MapView2D__
-#define __TrenchBroom__MapView2D__
+#ifndef TrenchBroom_MapView2D
+#define TrenchBroom_MapView2D
 
 #include "MathUtils.h"
 #include "Model/ModelTypes.h"
@@ -44,8 +44,8 @@ namespace TrenchBroom {
     namespace View {
         class CameraTool2D;
         class ClipToolAdapter2D;
-        class CreateBrushToolAdapter2D;
         class CreateEntityToolAdapter;
+        class CreateSimpleBrushToolAdapter2D;
         class GLContextManager;
         class MoveObjectsToolAdapter;
         class ResizeBrushesToolAdapter;
@@ -63,8 +63,8 @@ namespace TrenchBroom {
             Renderer::OrthographicCamera m_camera;
             
             ClipToolAdapter2D* m_clipToolAdapter;
-            CreateBrushToolAdapter2D* m_createBrushToolAdapter;
             CreateEntityToolAdapter* m_createEntityToolAdapter;
+            CreateSimpleBrushToolAdapter2D* m_createSimpleBrushToolAdapter;
             MoveObjectsToolAdapter* m_moveObjectsToolAdapter;
             ResizeBrushesToolAdapter* m_resizeBrushesToolAdapter;
             RotateObjectsToolAdapter* m_rotateObjectsToolAdapter;
@@ -89,8 +89,10 @@ namespace TrenchBroom {
         private: // implement RenderView interface
             void doUpdateViewport(int x, int y, int width, int height);
         private: // implement MapView interface
-            Vec3 doGetPasteObjectsDelta(const BBox3& bounds) const;
-            void doCenterCameraOnSelection();
+            Vec3 doGetPasteObjectsDelta(const BBox3& bounds, const BBox3& referenceBounds) const;
+            bool doCanSelectTall();
+            void doSelectTall();
+            void doFocusCameraOnSelection();
             
             void doMoveCameraToPosition(const Vec3& position);
             void animateCamera(const Vec3f& position, const Vec3f& direction, const Vec3f& up, const wxLongLong duration = DefaultCameraAnimationDuration);
@@ -115,4 +117,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__MapView2D__) */
+#endif /* defined(TrenchBroom_MapView2D) */

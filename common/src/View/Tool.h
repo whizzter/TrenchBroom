@@ -17,16 +17,23 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__Tool__
-#define __TrenchBroom__Tool__
+#ifndef TrenchBroom_Tool
+#define TrenchBroom_Tool
 
 #include "Notifier.h"
+
+class wxBitmap;
+class wxBookCtrlBase;
+class wxWindow;
 
 namespace TrenchBroom {
     namespace View {
         class Tool {
         private:
             bool m_active;
+
+            wxBookCtrlBase* m_book;
+            size_t m_pageIndex;
         public:
             Notifier1<Tool*> toolActivatedNotifier;
             Notifier1<Tool*> toolDeactivatedNotifier;
@@ -41,11 +48,19 @@ namespace TrenchBroom {
             bool deactivate();
 
             void refreshViews();
+            
+            void createPage(wxBookCtrlBase* book);
+            void showPage();
+            
+            wxBitmap icon() const;
         private:
             virtual bool doActivate();
             virtual bool doDeactivate();
+
+            virtual wxWindow* doCreatePage(wxWindow* parent);
+            virtual String doGetIconName() const;
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__Tool__) */
+#endif /* defined(TrenchBroom_Tool) */

@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__EntityProperties__
-#define __TrenchBroom__EntityProperties__
+#ifndef TrenchBroom_EntityProperties
+#define TrenchBroom_EntityProperties
 
 #include "StringUtils.h"
 #include "StringMap.h"
@@ -41,7 +41,7 @@ namespace TrenchBroom {
             extern const AttributeName Classname;
             extern const AttributeName Origin;
             extern const AttributeName Wad;
-            extern const AttributeName Wal;
+            extern const AttributeName Textures;
             extern const AttributeName Mods;
             extern const AttributeName Spawnflags;
             extern const AttributeName EntityDefinitions;
@@ -137,4 +137,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__EntityProperties__) */
+#endif /* defined(TrenchBroom_EntityProperties) */

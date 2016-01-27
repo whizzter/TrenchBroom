@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__ToolBox__
-#define __TrenchBroom__ToolBox__
+#ifndef TrenchBroom_ToolBox
+#define TrenchBroom_ToolBox
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
@@ -73,9 +73,12 @@ namespace TrenchBroom {
             ToolBox();
         public: // focus window management
             void addWindow(wxWindow* window);
+            void removeWindow(wxWindow* window);
         private:
             void OnSetFocus(wxFocusEvent& event);
             void OnKillFocus(wxFocusEvent& event);
+            void OnEnterWindow(wxMouseEvent& event);
+            void OnLeaveWindow(wxMouseEvent& event);
             void setFocusCursor();
             void clearFocusCursor();
         protected:
@@ -132,4 +135,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__ToolBox__) */
+#endif /* defined(TrenchBroom_ToolBox) */

@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__EntityModelRenderer__
-#define __TrenchBroom__EntityModelRenderer__
+#ifndef TrenchBroom_EntityModelRenderer
+#define TrenchBroom_EntityModelRenderer
 
 #include "Color.h"
 #include "Assets/ModelDefinition.h"
@@ -40,13 +40,13 @@ namespace TrenchBroom {
     }
     
     namespace Renderer {
-        class TexturedTriangleMeshRenderer;
         class RenderBatch;
         class RenderContext;
+        class TexturedIndexRangeRenderer;
         
-        class EntityModelRenderer : public Renderable {
+        class EntityModelRenderer : public DirectRenderable {
         private:
-            typedef std::map<Model::Entity*, TexturedTriangleMeshRenderer*> EntityMap;
+            typedef std::map<Model::Entity*, TexturedIndexRangeRenderer*> EntityMap;
             
             Assets::EntityModelManager& m_entityModelManager;
             const Model::EditorContext& m_editorContext;
@@ -61,9 +61,11 @@ namespace TrenchBroom {
             EntityModelRenderer(Assets::EntityModelManager& entityModelManager, const Model::EditorContext& editorContext);
             ~EntityModelRenderer();
             
-            void addEntity(Model::Entity* entity);
-            void updateEntity(Model::Entity* entity);
-            void removeEntity(Model::Entity* entity);
+            template <typename I>
+            void setEntities(I cur, I end) {
+                clear();
+                addEntities(cur, end);
+            }
             
             template <typename I>
             void addEntities(I cur, I end) {
@@ -73,22 +75,7 @@ namespace TrenchBroom {
                 }
             }
             
-            template <typename I>
-            void updateEntities(I cur, I end) {
-                while (cur != end) {
-                    updateEntity(*cur);
-                    ++cur;
-                }
-            }
-            
-            template <typename I>
-            void removeEntities(I cur, I end) {
-                while (cur != end) {
-                    removeEntity(*cur);
-                    ++cur;
-                }
-            }
-            
+            void addEntity(Model::Entity* entity);
             void clear();
             
             bool applyTinting() const;
@@ -101,12 +88,10 @@ namespace TrenchBroom {
             
             void render(RenderBatch& renderBatch);
         private:
-            void doPrepare(Vbo& vbo);
-            
-            class MeshFunc;
+            void doPrepareVertices(Vbo& vertexVbo);
             void doRender(RenderContext& renderContext);
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__EntityModelRenderer__) */
+#endif /* defined(TrenchBroom_EntityModelRenderer) */

@@ -17,13 +17,14 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__FlyModeHelper__
-#define __TrenchBroom__FlyModeHelper__
+#ifndef TrenchBroom_FlyModeHelper
+#define TrenchBroom_FlyModeHelper
 
 #include "VecMath.h"
 
 #include <iostream>
 
+#include <wx/thread.h>
 #include <wx/wx.h>
 
 namespace TrenchBroom {
@@ -32,11 +33,12 @@ namespace TrenchBroom {
     }
     
     namespace View {
-        class FlyModeHelper : public wxTimer {
+        class FlyModeHelper : public wxThread {
         private:
             wxWindow* m_window;
             Renderer::Camera& m_camera;
             
+            wxCriticalSection m_critical;
             bool m_forward;
             bool m_backward;
             bool m_left;
@@ -45,7 +47,13 @@ namespace TrenchBroom {
             bool m_enabled;
             
             wxPoint m_originalMousePos;
+            wxPoint m_lastMousePos;
+            wxPoint m_currentMouseDelta;
+            bool m_ignoreMotionEvents;
+            
             wxLongLong m_lastPollTime;
+            
+            class CameraEvent;
         public:
             FlyModeHelper(wxWindow* window, Renderer::Camera& camera);
             ~FlyModeHelper();
@@ -57,24 +65,22 @@ namespace TrenchBroom {
         private:
             void lockMouse();
             void unlockMouse();
-
-            void Notify();
-            Vec3f moveDelta(float time) const;
-            Vec2f lookDelta(wxPoint mouseDelta) const;
+        public:
+            bool keyDown(wxKeyEvent& event);
+            bool keyUp(wxKeyEvent& event);
+        public:
+            void motion(wxMouseEvent& event);
+        private:
+            void resetMouse();
+            wxPoint windowCenter() const;
+        private:
+            ExitCode Entry();
+            Vec3f moveDelta();
+            Vec2f lookDelta();
             Vec2f lookSpeed() const;
             float moveSpeed() const;
-            
-            float pollTime();
-            wxPoint pollMouseDelta();
-            void resetMouse();
-            
-            wxPoint windowCenter() const;
-            
-            void OnKeyDown(wxKeyEvent& event);
-            void OnKeyUp(wxKeyEvent& event);
-            void onKey(wxKeyEvent& event, bool down);
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__FlyModeHelper__) */
+#endif /* defined(TrenchBroom_FlyModeHelper) */

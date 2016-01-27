@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__ToolAdapter__
-#define __TrenchBroom__ToolAdapter__
+#ifndef TrenchBroom_ToolAdapter
+#define TrenchBroom_ToolAdapter
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
@@ -99,12 +99,36 @@ namespace TrenchBroom {
             void doCancelMouseDrag();
         };
         
+        class DelegatingMouseDragPolicy : public MouseDragPolicy {
+        private:
+            MouseDragPolicy* m_delegate;
+        protected:
+            DelegatingMouseDragPolicy();
+        public:
+            virtual ~DelegatingMouseDragPolicy();
+        public:
+            bool doStartMouseDrag(const InputState& inputState);
+            bool doMouseDrag(const InputState& inputState);
+            void doEndMouseDrag(const InputState& inputState);
+            void doCancelMouseDrag();
+        private:
+            virtual MouseDragPolicy* doCreateDelegate(const InputState& inputState) = 0;
+            virtual void doDeleteDelegate(MouseDragPolicy* delegate) = 0;
+            
+            virtual void doMouseDragStarted();
+            virtual void doMouseDragged();
+            virtual void doMouseDragEnded();
+            virtual void doMouseDragCancelled();
+        };
+        
         class PlaneDragPolicy : public MouseDragPolicy {
         private:
             Plane3 m_plane;
             Vec3 m_lastPoint;
             Vec3 m_refPoint;
+            bool m_dragging;
         public:
+            PlaneDragPolicy();
             virtual ~PlaneDragPolicy();
         public:
             bool doStartMouseDrag(const InputState& inputState);
@@ -112,6 +136,7 @@ namespace TrenchBroom {
             void doEndMouseDrag(const InputState& inputState);
             void doCancelMouseDrag();
 
+            bool dragging() const;
             void resetPlane(const InputState& inputState);
         private: // subclassing interface
             virtual bool doStartPlaneDrag(const InputState& inputState, Plane3& plane, Vec3& initialPoint) = 0;
@@ -122,17 +147,53 @@ namespace TrenchBroom {
         };
         
         class PlaneDragHelper {
+        private:
+            PlaneDragPolicy* m_policy;
         public:
+            PlaneDragHelper(PlaneDragPolicy* policy);
             virtual ~PlaneDragHelper();
             
-            virtual bool startPlaneDrag(const InputState& inputState, Plane3& plane, Vec3& initialPoint) = 0;
-            virtual bool planeDrag(const InputState& inputState, const Vec3& lastPoint, const Vec3& curPoint, Vec3& refPoint) = 0;
-            virtual void endPlaneDrag(const InputState& inputState) = 0;
-            virtual void cancelPlaneDrag() = 0;
-            virtual void resetPlane(const InputState& inputState, Plane3& plane, Vec3& initialPoint) = 0;
-            virtual void render(const InputState& inputState, bool dragging, Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch) = 0;
+            bool startPlaneDrag(const InputState& inputState, Plane3& plane, Vec3& initialPoint);
+            bool planeDrag(const InputState& inputState, const Vec3& lastPoint, const Vec3& curPoint, Vec3& refPoint);
+            void endPlaneDrag(const InputState& inputState);
+            void cancelPlaneDrag();
+            void resetPlane(const InputState& inputState, Plane3& plane, Vec3& initialPoint);
+            void render(const InputState& inputState, Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch);
+        protected:
+            bool dragging() const;
+            void resetPlane(const InputState& inputState);
+        private:
+            virtual bool doStartPlaneDrag(const InputState& inputState, Plane3& plane, Vec3& initialPoint) = 0;
+            virtual bool doPlaneDrag(const InputState& inputState, const Vec3& lastPoint, const Vec3& curPoint, Vec3& refPoint) = 0;
+            virtual void doEndPlaneDrag(const InputState& inputState) = 0;
+            virtual void doCancelPlaneDrag() = 0;
+            virtual void doResetPlane(const InputState& inputState, Plane3& plane, Vec3& initialPoint) = 0;
+            virtual void doRender(const InputState& inputState, Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch) = 0;
         };
 
+        class LineDragPolicy : public MouseDragPolicy {
+        private:
+            Line3 m_line;
+            FloatType m_lastDist;
+            FloatType m_refDist;
+            bool m_dragging;
+        public:
+            LineDragPolicy();
+            virtual ~LineDragPolicy();
+        public:
+            bool doStartMouseDrag(const InputState& inputState);
+            bool doMouseDrag(const InputState& inputState);
+            void doEndMouseDrag(const InputState& inputState);
+            void doCancelMouseDrag();
+            
+            bool dragging() const;
+        private: // subclassing interface
+            virtual bool doStartLineDrag(const InputState& inputState, Line3& ray, FloatType& initialDist) = 0;
+            virtual bool doLineDrag(const InputState& inputState, FloatType lastDist, FloatType curDist, FloatType& refDist) = 0;
+            virtual void doEndLineDrag(const InputState& inputState) = 0;
+            virtual void doCancelLineDrag() = 0;
+        };
+        
         class RenderPolicy {
         public:
             virtual ~RenderPolicy();
@@ -321,4 +382,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__ToolAdapter__) */
+#endif /* defined(TrenchBroom_ToolAdapter) */

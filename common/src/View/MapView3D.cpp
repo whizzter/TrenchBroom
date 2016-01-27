@@ -19,26 +19,31 @@
 
 #include "MapView3D.h"
 #include "Logger.h"
+#include "PreferenceManager.h"
+#include "Preferences.h"
 #include "Model/Brush.h"
 #include "Model/BrushFace.h"
-#include "Model/BrushVertex.h"
+#include "Model/BrushGeometry.h"
 #include "Model/Entity.h"
 #include "Model/HitAdapter.h"
 #include "Model/HitQuery.h"
 #include "Model/PickResult.h"
 #include "Model/PointFile.h"
-#include "Renderer/Compass.h"
+#include "Renderer/BoundsGuideRenderer.h"
+#include "Renderer/Compass3D.h"
 #include "Renderer/MapRenderer.h"
 #include "Renderer/RenderBatch.h"
 #include "Renderer/RenderContext.h"
+#include "Renderer/SelectionBoundsRenderer.h"
 #include "View/ActionManager.h"
 #include "View/Animation.h"
 #include "View/CameraAnimation.h"
 #include "View/CameraTool3D.h"
 #include "View/ClipToolAdapter.h"
 #include "View/CommandIds.h"
-#include "View/CreateBrushToolAdapter3D.h"
+#include "View/CreateComplexBrushToolAdapter3D.h"
 #include "View/CreateEntityToolAdapter.h"
+#include "View/CreateSimpleBrushToolAdapter3D.h"
 #include "View/FlashSelectionAnimation.h"
 #include "View/FlyModeHelper.h"
 #include "View/GLContextManager.h"
@@ -59,10 +64,10 @@ namespace TrenchBroom {
     namespace View {
         MapView3D::MapView3D(wxWindow* parent, Logger* logger, MapDocumentWPtr document, MapViewToolBox& toolBox, Renderer::MapRenderer& renderer, GLContextManager& contextManager) :
         MapViewBase(parent, logger, document, toolBox, renderer, contextManager),
-        m_compass(new Renderer::Compass(m_movementRestriction)),
         m_clipToolAdapter(NULL),
-        m_createBrushToolAdapter(NULL),
+        m_createComplexBrushToolAdapter(NULL),
         m_createEntityToolAdapter(NULL),
+        m_createSimpleBrushToolAdapter(NULL),
         m_moveObjectsToolAdapter(NULL),
         m_resizeBrushesToolAdapter(NULL),
         m_rotateObjectsToolAdapter(NULL),
@@ -72,18 +77,28 @@ namespace TrenchBroom {
         m_flyModeHelper(new FlyModeHelper(this, m_camera)) {
             bindEvents();
             bindObservers();
+            initializeCamera();
             initializeToolChain(toolBox);
+            setCompass(new Renderer::Compass3D(m_movementRestriction));
         }
 
         MapView3D::~MapView3D() {
+            m_flyModeHelper->Delete();
+            destroyToolChain();
             unbindObservers();
         }
         
+        void MapView3D::initializeCamera() {
+            m_camera.moveTo(Vec3f(-80.0f, -128.0f, 96.0f));
+            m_camera.lookAt(Vec3::Null, Vec3::PosZ);
+        }
+
         void MapView3D::initializeToolChain(MapViewToolBox& toolBox) {
             const Grid& grid = lock(m_document)->grid();
             m_clipToolAdapter = new ClipToolAdapter3D(toolBox.clipTool(), grid);
-            m_createBrushToolAdapter = new CreateBrushToolAdapter3D(toolBox.createBrushTool(), grid);
+            m_createComplexBrushToolAdapter = new CreateComplexBrushToolAdapter3D(toolBox.createComplexBrushTool(), m_document);
             m_createEntityToolAdapter = new CreateEntityToolAdapter3D(toolBox.createEntityTool());
+            m_createSimpleBrushToolAdapter = new CreateSimpleBrushToolAdapter3D(toolBox.createSimpleBrushTool(), m_document);
             m_moveObjectsToolAdapter = new MoveObjectsToolAdapter3D(toolBox.moveObjectsTool(), m_movementRestriction);
             m_resizeBrushesToolAdapter = new ResizeBrushesToolAdapter3D(toolBox.resizeBrushesTool());
             m_rotateObjectsToolAdapter = new RotateObjectsToolAdapter3D(toolBox.rotateObjectsTool(), m_movementRestriction);
@@ -95,26 +110,26 @@ namespace TrenchBroom {
             addTool(m_moveObjectsToolAdapter);
             addTool(m_rotateObjectsToolAdapter);
             addTool(m_resizeBrushesToolAdapter);
-            addTool(m_createBrushToolAdapter);
+            addTool(m_createComplexBrushToolAdapter);
             addTool(m_clipToolAdapter);
             addTool(m_vertexToolAdapter);
             addTool(m_createEntityToolAdapter);
             addTool(m_setBrushFaceAttributesTool);
             addTool(toolBox.selectionTool());
+            addTool(m_createSimpleBrushToolAdapter);
         }
 
         void MapView3D::destroyToolChain() {
-            delete m_flyModeHelper;
             delete m_cameraTool;
             delete m_vertexToolAdapter;
             delete m_setBrushFaceAttributesTool;
             delete m_rotateObjectsToolAdapter;
             delete m_resizeBrushesToolAdapter;
             delete m_moveObjectsToolAdapter;
+            delete m_createSimpleBrushToolAdapter;
             delete m_createEntityToolAdapter;
-            delete m_createBrushToolAdapter;
+            delete m_createComplexBrushToolAdapter;
             delete m_clipToolAdapter;
-            delete m_compass;
         }
 
         bool MapView3D::cameraFlyModeActive() const {
@@ -146,12 +161,17 @@ namespace TrenchBroom {
         }
         
         void MapView3D::bindEvents() {
-            Bind(wxEVT_KEY_DOWN, &MapView3D::OnKey, this);
-            Bind(wxEVT_KEY_UP, &MapView3D::OnKey, this);
+            Bind(wxEVT_KEY_DOWN, &MapView3D::OnKeyDown, this);
+            Bind(wxEVT_KEY_UP, &MapView3D::OnKeyUp, this);
+            Bind(wxEVT_MOTION, &MapView3D::OnMouseMotion, this);
             
+            Bind(wxEVT_SET_FOCUS, &MapView3D::OnSetFocus, this);
             Bind(wxEVT_KILL_FOCUS, &MapView3D::OnKillFocus, this);
             
             Bind(wxEVT_MENU, &MapView3D::OnToggleMovementRestriction,    this, CommandIds::Actions::ToggleMovementRestriction);
+            Bind(wxEVT_MENU, &MapView3D::OnSetMovementRestrictionX,      this, CommandIds::Actions::SetMovementRestrictionX);
+            Bind(wxEVT_MENU, &MapView3D::OnSetMovementRestrictionY,      this, CommandIds::Actions::SetMovementRestrictionY);
+            Bind(wxEVT_MENU, &MapView3D::OnSetMovementRestrictionZ,      this, CommandIds::Actions::SetMovementRestrictionZ);
             Bind(wxEVT_MENU, &MapView3D::OnPerformCreateBrush,           this, CommandIds::Actions::PerformCreateBrush);
 
             Bind(wxEVT_MENU, &MapView3D::OnMoveTexturesUp,               this, CommandIds::Actions::MoveTexturesUp);
@@ -168,43 +188,103 @@ namespace TrenchBroom {
             frame->Bind(wxEVT_ACTIVATE, &MapView3D::OnActivateFrame, this);
         }
         
-        void MapView3D::OnKey(wxKeyEvent& event) {
-            m_movementRestriction.setVerticalRestriction(event.AltDown());
-            Refresh();
-            event.Skip();
+        void MapView3D::OnKeyDown(wxKeyEvent& event) {
+            if (IsBeingDeleted()) return;
+
+            if (!m_flyModeHelper->keyDown(event)) {
+                key(event);
+                event.Skip();
+            }
         }
         
+        void MapView3D::OnKeyUp(wxKeyEvent& event) {
+            if (IsBeingDeleted()) return;
+
+            if (!m_flyModeHelper->keyUp(event)) {
+                key(event);
+                event.Skip();
+            }
+        }
+        
+        void MapView3D::key(wxKeyEvent& event) {
+            updateVerticalMovementRestriction(event);
+        }
+
+        void MapView3D::OnMouseMotion(wxMouseEvent& event) {
+            if (IsBeingDeleted()) return;
+
+            m_flyModeHelper->motion(event);
+            event.Skip();
+        }
+
         void MapView3D::OnToggleMovementRestriction(wxCommandEvent& event) {
-            m_movementRestriction.toggleHorizontalRestriction(m_camera);
+            if (IsBeingDeleted()) return;
+
+            m_movementRestriction.toggleRestriction();
+            Refresh();
+        }
+
+        void MapView3D::OnSetMovementRestrictionX(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+            
+            m_movementRestriction.toggleRestriction(Math::Axis::AX);
+            Refresh();
+        }
+        
+        void MapView3D::OnSetMovementRestrictionY(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+            
+            m_movementRestriction.toggleRestriction(Math::Axis::AY);
+            Refresh();
+        }
+        
+        void MapView3D::OnSetMovementRestrictionZ(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+            
+            m_movementRestriction.toggleRestriction(Math::Axis::AZ);
             Refresh();
         }
 
         void MapView3D::OnPerformCreateBrush(wxCommandEvent& event) {
-            if (m_toolBox.createBrushToolActive())
-                m_createBrushToolAdapter->performCreateBrush();
+            if (IsBeingDeleted()) return;
+
+            if (m_toolBox.createComplexBrushToolActive())
+                m_createComplexBrushToolAdapter->performCreateBrush();
         }
 
         void MapView3D::OnMoveTexturesUp(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             moveTextures(Vec2f(0.0f, moveTextureDistance()));
         }
         
         void MapView3D::OnMoveTexturesDown(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             moveTextures(Vec2f(0.0f, -moveTextureDistance()));
         }
         
         void MapView3D::OnMoveTexturesLeft(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             moveTextures(Vec2f(-moveTextureDistance(), 0.0f));
         }
         
         void MapView3D::OnMoveTexturesRight(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             moveTextures(Vec2f(moveTextureDistance(), 0.0f));
         }
         
         void MapView3D::OnRotateTexturesCW(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             rotateTextures(rotateTextureAngle(true));
         }
         
         void MapView3D::OnRotateTexturesCCW(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             rotateTextures(rotateTextureAngle(false));
         }
         
@@ -257,19 +337,39 @@ namespace TrenchBroom {
         }
 
         void MapView3D::OnToggleFlyMode(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             toggleCameraFlyMode();
         }
 
+        void MapView3D::OnSetFocus(wxFocusEvent& event) {
+            if (IsBeingDeleted()) return;
+            
+            updateVerticalMovementRestriction(wxGetMouseState());
+            event.Skip();
+        }
+
         void MapView3D::OnKillFocus(wxFocusEvent& event) {
+            if (IsBeingDeleted()) return;
+
             if (cameraFlyModeActive())
                 toggleCameraFlyMode();
+            updateVerticalMovementRestriction(wxGetMouseState());
             event.Skip();
         }
 
         void MapView3D::OnActivateFrame(wxActivateEvent& event) {
+            if (IsBeingDeleted()) return;
+
             if (cameraFlyModeActive())
                 toggleCameraFlyMode();
+            updateVerticalMovementRestriction(wxGetMouseState());
             event.Skip();
+        }
+
+        void MapView3D::updateVerticalMovementRestriction(const wxKeyboardState& state) {
+            m_movementRestriction.toggleVerticalRestriction(state.AltDown());
+            Refresh();
         }
 
         PickRequest MapView3D::doGetPickRequest(const int x, const int y) const {
@@ -289,7 +389,7 @@ namespace TrenchBroom {
             m_camera.setViewport(Renderer::Camera::Viewport(x, y, width, height));
         }
 
-        Vec3 MapView3D::doGetPasteObjectsDelta(const BBox3& bounds) const {
+        Vec3 MapView3D::doGetPasteObjectsDelta(const BBox3& bounds, const BBox3& referenceBounds) const {
             MapDocumentSPtr document = lock(m_document);
             const Grid& grid = document->grid();
             
@@ -304,29 +404,37 @@ namespace TrenchBroom {
 
                 document->pick(Ray3(pickRay), pickResult);
                 const Model::Hit& hit = pickResult.query().pickable().type(Model::Brush::BrushHit).first();
+                
                 if (hit.isMatch()) {
                     const Model::BrushFace* face = Model::hitToFace(hit);
-                    const Vec3 snappedHitPoint = grid.snap(hit.hitPoint());
-                    const Plane3 dragPlane = alignedOrthogonalDragPlane(snappedHitPoint, face->boundary().normal);
-                    return grid.moveDeltaForBounds(dragPlane, bounds, document->worldBounds(), pickRay, snappedHitPoint);
+                    const Plane3 dragPlane = alignedOrthogonalDragPlane(hit.hitPoint(), face->boundary().normal);
+                    return grid.moveDeltaForBounds(dragPlane, bounds, document->worldBounds(), pickRay, hit.hitPoint());
                 } else {
-                    const Vec3 snappedCenter = grid.snap(bounds.center());
-                    const Vec3 snappedDefaultPoint = grid.snap(m_camera.defaultPoint(pickRay));
-                    return snappedDefaultPoint - snappedCenter;
+                    const Vec3 point = m_camera.defaultPoint(pickRay);
+                    const Plane3 dragPlane = alignedOrthogonalDragPlane(point, -Vec3(m_camera.direction()));
+                    return grid.moveDeltaForBounds(dragPlane, bounds, document->worldBounds(), pickRay, point);
                 }
             } else {
-                const Vec3 snappedCenter = grid.snap(bounds.center());
-                const Vec3 snappedDefaultPoint = grid.snap(m_camera.defaultPoint());
-                return snappedDefaultPoint - snappedCenter;
+                const Vec3 oldMin = bounds.min;
+                const Vec3 oldCenter = bounds.center();
+                const Vec3 newCenter = m_camera.defaultPoint();
+                const Vec3 newMin = oldMin + (newCenter - oldCenter);
+                return grid.snap(newMin);
             }
         }
         
-        void MapView3D::doCenterCameraOnSelection() {
+        bool MapView3D::doCanSelectTall() {
+            return false;
+        }
+        
+        void MapView3D::doSelectTall() {}
+
+        void MapView3D::doFocusCameraOnSelection() {
             MapDocumentSPtr document = lock(m_document);
             const Model::NodeList& nodes = document->selectedNodes().nodes();
             assert(!nodes.empty());
             
-            const Vec3 newPosition = centerCameraOnObjectsPosition(nodes);
+            const Vec3 newPosition = focusCameraOnObjectsPosition(nodes);
             moveCameraToPosition(newPosition);
         }
         
@@ -361,11 +469,10 @@ namespace TrenchBroom {
             }
             
             void doVisit(const Model::Brush* brush)   {
-                const Model::BrushVertexList& vertices = brush->vertices();
-                for (size_t i = 0; i < vertices.size(); ++i) {
-                    const Model::BrushVertex* vertex = vertices[i];
-                    addPoint(vertex->position);
-                }
+                const Model::Brush::VertexList vertices = brush->vertices();
+                Model::Brush::VertexList::const_iterator it, end;
+                for (it = vertices.begin(), end = vertices.end(); it != end; ++it)
+                    addPoint((*it)->position());
             }
             
             void addPoint(const Vec3& point) {
@@ -410,10 +517,12 @@ namespace TrenchBroom {
             }
             
             void doVisit(const Model::Brush* brush)   {
-                const Model::BrushVertexList& vertices = brush->vertices();
-                for (size_t i = 0; i < vertices.size(); ++i) {
+                const Model::Brush::VertexList vertices = brush->vertices();
+                Model::Brush::VertexList::const_iterator it, end;
+                for (it = vertices.begin(), end = vertices.end(); it != end; ++it) {
+                    const Model::BrushVertex* vertex = *it;
                     for (size_t j = 0; j < 4; ++j)
-                        addPoint(vertices[i]->position, m_frustumPlanes[j]);
+                        addPoint(vertex->position(), m_frustumPlanes[j]);
                 }
             }
             
@@ -426,7 +535,7 @@ namespace TrenchBroom {
             }
         };
 
-        Vec3f MapView3D::centerCameraOnObjectsPosition(const Model::NodeList& nodes) {
+        Vec3f MapView3D::focusCameraOnObjectsPosition(const Model::NodeList& nodes) {
             ComputeCameraCenterPositionVisitor center(m_camera.position(), m_camera.direction());
             Model::Node::acceptAndRecurse(nodes.begin(), nodes.end(), center);
 
@@ -492,7 +601,7 @@ namespace TrenchBroom {
                     return Vec3::PosZ;
                 case Math::Direction_Down:
                     return Vec3::NegZ;
-                    DEFAULT_SWITCH()
+                    switchDefault()
             }
         }
 
@@ -504,7 +613,7 @@ namespace TrenchBroom {
             
             const BBox3& worldBounds = document->worldBounds();
             
-            const Model::Hit& hit = pickResult().query().pickable().type(Model::Entity::EntityHit | Model::Brush::BrushHit).occluded().first();
+            const Model::Hit& hit = pickResult().query().pickable().type(Model::Brush::BrushHit).occluded().first();
             if (hit.isMatch()) {
                 const Model::BrushFace* face = Model::hitToFace(hit);
                 return grid.moveDeltaForBounds(face->boundary(), bounds, worldBounds, pickRay(), hit.hitPoint());
@@ -542,14 +651,27 @@ namespace TrenchBroom {
 
         void MapView3D::doRenderMap(Renderer::MapRenderer& renderer, Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch) {
             renderer.render(renderContext, renderBatch);
+
+            MapDocumentSPtr document = lock(m_document);
+            if (renderContext.showSelectionGuide() && document->hasSelectedNodes()) {
+                const BBox3& bounds = document->selectionBounds();
+                Renderer::SelectionBoundsRenderer boundsRenderer(bounds);
+                boundsRenderer.render(renderContext, renderBatch);
+                
+                Renderer::BoundsGuideRenderer* guideRenderer = new Renderer::BoundsGuideRenderer(m_document);
+                guideRenderer->setColor(pref(Preferences::SelectionBoundsColor));
+                guideRenderer->setBounds(bounds);
+                renderBatch.addOneShot(guideRenderer);
+            }
         }
         
         void MapView3D::doRenderTools(MapViewToolBox& toolBox, Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch) {
             renderTools(renderContext, renderBatch);
         }
         
-        void MapView3D::doRenderExtras(Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch) {
-            m_compass->render(renderBatch);
+        void MapView3D::doAfterPopupMenu() {
+            updateVerticalMovementRestriction(wxGetMouseState());
+            Refresh();
         }
         
         void MapView3D::doLinkCamera(CameraLinkHelper& helper) {}

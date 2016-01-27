@@ -37,12 +37,29 @@ namespace TrenchBroom {
             doClearDropTarget();
         }
 
-        Vec3 MapView::pasteObjectsDelta(const BBox3& bounds) const {
-            return doGetPasteObjectsDelta(bounds);
+        bool MapView::canSelectTall() {
+            return doCanSelectTall();
         }
         
-        void MapView::centerCameraOnSelection() {
-            doCenterCameraOnSelection();
+        void MapView::selectTall() {
+            doSelectTall();
+        }
+
+        bool MapView::canFlipObjects() const {
+            return doCanFlipObjects();
+        }
+        
+        void MapView::flipObjects(const Math::Direction direction) {
+            assert(canFlipObjects());
+            doFlipObjects(direction);
+        }
+
+        Vec3 MapView::pasteObjectsDelta(const BBox3& bounds, const BBox3& referenceBounds) const {
+            return doGetPasteObjectsDelta(bounds, referenceBounds);
+        }
+        
+        void MapView::focusCameraOnSelection() {
+            doFocusCameraOnSelection();
         }
         
         void MapView::moveCameraToPosition(const Vec3& position) {

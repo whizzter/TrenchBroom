@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__VertexTool__
-#define __TrenchBroom__VertexTool__
+#ifndef TrenchBroom_VertexTool
+#define TrenchBroom_VertexTool
 
 #include "StringUtils.h"
 #include "TrenchBroom.h"
@@ -26,6 +26,7 @@
 #include "Model/Hit.h"
 #include "View/MoveToolAdapter.h"
 #include "View/Tool.h"
+#include "View/UndoableCommand.h"
 #include "View/VertexHandleManager.h"
 
 namespace TrenchBroom {
@@ -42,6 +43,7 @@ namespace TrenchBroom {
     
     namespace View {
         class InputState;
+        class Lasso;
         class MovementRestriction;
         class Selection;
         
@@ -69,6 +71,7 @@ namespace TrenchBroom {
             bool mergeVertices(const Model::Hit& hit);
             bool handleDoubleClicked(const Model::Hit& hit);
             bool select(const Model::Hit::List& hits, bool addToSelection);
+            void select(const Lasso& lasso, bool modifySelection);
 
             bool beginMove(const Model::Hit& hit);
             Vec3 snapMoveDelta(const Vec3& delta, const Model::Hit& hit, bool relative);
@@ -79,6 +82,10 @@ namespace TrenchBroom {
             void renderHandles(Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch);
             void renderHighlight(Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch);
             void renderHighlight(Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch, const Vec3& position);
+            void renderEdgeHighlight(Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch, const Vec3& handlePosition);
+            void renderFaceHighlight(Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch, const Vec3& handlePosition);
+            void renderGuide(Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch);
+            void renderGuide(Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch, const Vec3& position);
             
             bool cancel();
             
@@ -110,16 +117,25 @@ namespace TrenchBroom {
             void bindObservers();
             void unbindObservers();
             
-            void commandDoOrUndo(Command* command);
-            void commandDoneOrUndoFailed(Command* command);
-            void commandDoFailedOrUndone(Command* command);
-            bool isVertexCommand(const Command* command) const;
+            void commandDo(Command::Ptr command);
+            void commandDone(Command::Ptr command);
+            void commandDoFailed(Command::Ptr command);
+            void commandUndo(UndoableCommand::Ptr command);
+            void commandUndone(UndoableCommand::Ptr command);
+            void commandUndoFailed(UndoableCommand::Ptr command);
+
+            void commandDoOrUndo(Command::Ptr command);
+            void commandDoneOrUndoFailed(Command::Ptr command);
+            void commandDoFailedOrUndone(Command::Ptr command);
+            bool isVertexCommand(const Command::Ptr command) const;
             
             void selectionDidChange(const Selection& selection);
             void nodesWillChange(const Model::NodeList& nodes);
             void nodesDidChange(const Model::NodeList& nodes);
+        private: // implement Tool interface
+            String doGetIconName() const;
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__VertexTool__) */
+#endif /* defined(TrenchBroom_VertexTool) */

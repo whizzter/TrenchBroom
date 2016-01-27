@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__Animation__
-#define __TrenchBroom__Animation__
+#ifndef TrenchBroom_Animation
+#define TrenchBroom_Animation
 
 #include "SharedPointer.h"
 #include "View/ExecutableEvent.h"
@@ -27,7 +27,7 @@
 #include <vector>
 
 #include <wx/longlong.h>
-#include <wx/timer.h>
+#include <wx/thread.h>
 
 namespace TrenchBroom {
     namespace View {
@@ -75,7 +75,7 @@ namespace TrenchBroom {
             void execute();
         };
         
-        class AnimationManager : public wxTimer {
+        class AnimationManager : public wxThread {
         private:
             typedef std::map<Animation::Type, Animation::List> AnimationMap;
             
@@ -85,9 +85,9 @@ namespace TrenchBroom {
             AnimationManager();
             void runAnimation(Animation* animation, bool replace);
         private:
-            void Notify();
+            ExitCode Entry();
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__Animation__) */
+#endif /* defined(TrenchBroom_Animation) */

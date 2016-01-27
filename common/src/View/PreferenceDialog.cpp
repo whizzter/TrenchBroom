@@ -26,7 +26,7 @@
 #include "View/BorderLine.h"
 #include "View/GamesPreferencePane.h"
 #include "View/KeyboardPreferencePane.h"
-#include "View/CameraPreferencePane.h"
+#include "View/MousePreferencePane.h"
 #include "View/ViewPreferencePane.h"
 #include "View/ViewConstants.h"
 #include "View/PreferencePane.h"
@@ -62,11 +62,15 @@ namespace TrenchBroom {
         }
 
         void PreferenceDialog::OnToolClicked(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             const PrefPane newPane = static_cast<PrefPane>(event.GetId());
             switchToPane(newPane);
         }
 
         void PreferenceDialog::OnOKClicked(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             if (!currentPane()->validate())
                 return;
 
@@ -77,6 +81,8 @@ namespace TrenchBroom {
         }
 
         void PreferenceDialog::OnApplyClicked(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             if (!currentPane()->validate())
                 return;
 
@@ -86,6 +92,8 @@ namespace TrenchBroom {
         }
 
         void PreferenceDialog::OnCancelClicked(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             PreferenceManager& prefs = PreferenceManager::instance();
             if (!prefs.saveInstantly())
                 prefs.discardChanges();
@@ -93,6 +101,8 @@ namespace TrenchBroom {
         }
 
         void PreferenceDialog::OnClose(wxCloseEvent& event) {
+            if (IsBeingDeleted()) return;
+
             if (!currentPane()->validate() && event.CanVeto()) {
                 event.Veto();
                 return;
@@ -113,6 +123,8 @@ namespace TrenchBroom {
         }
 
         void PreferenceDialog::OnFileClose(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             if (!currentPane()->validate()) {
                 event.Skip();
                 return;
@@ -124,30 +136,35 @@ namespace TrenchBroom {
         }
 
         void PreferenceDialog::OnResetClicked(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             assert(currentPane()->canResetToDefaults());
             currentPane()->resetToDefaults();
         }
         
         void PreferenceDialog::OnUpdateReset(wxUpdateUIEvent& event) {
+            if (IsBeingDeleted()) return;
+
             event.Enable(currentPane()->canResetToDefaults());
         }
 
         void PreferenceDialog::createGui() {
-            const wxBitmap gamesImage = IO::loadImageResource(IO::Path("images/GeneralPreferences.png"));
-            const wxBitmap generalImage = IO::loadImageResource(IO::Path("images/GeneralPreferences.png"));
-            const wxBitmap keyboardImage = IO::loadImageResource(IO::Path("images/KeyboardPreferences.png"));
+            const wxBitmap gamesImage = IO::loadImageResource("GeneralPreferences.png");
+            const wxBitmap generalImage = IO::loadImageResource("GeneralPreferences.png");
+            const wxBitmap mouseImage = IO::loadImageResource("MousePreferences.png");
+            const wxBitmap keyboardImage = IO::loadImageResource("KeyboardPreferences.png");
             
             m_toolBar = new wxToolBar(this, wxID_ANY);
             m_toolBar->AddCheckTool(PrefPane_Games, "Games", gamesImage, wxNullBitmap);
             m_toolBar->AddCheckTool(PrefPane_View, "View", generalImage, wxNullBitmap);
-            m_toolBar->AddCheckTool(PrefPane_Camera, "Camera", generalImage, wxNullBitmap);
+            m_toolBar->AddCheckTool(PrefPane_Mouse, "Mouse", mouseImage, wxNullBitmap);
             m_toolBar->AddCheckTool(PrefPane_Keyboard, "Keyboard", keyboardImage, wxNullBitmap);
             m_toolBar->Realize();
             
             m_book = new wxSimplebook(this);
             m_book->AddPage(new GamesPreferencePane(m_book), "Games");
             m_book->AddPage(new ViewPreferencePane(m_book), "View");
-            m_book->AddPage(new CameraPreferencePane(m_book), "Camera");
+            m_book->AddPage(new MousePreferencePane(m_book), "Mouse");
             m_book->AddPage(new KeyboardPreferencePane(m_book), "Keyboard");
             
             wxButton* resetButton = new wxButton(this, wxID_ANY, "Reset to defaults");

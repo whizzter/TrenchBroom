@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__EntityModelManager__
-#define __TrenchBroom__EntityModelManager__
+#ifndef TrenchBroom_EntityModelManager
+#define TrenchBroom_EntityModelManager
 
 #include "Assets/ModelDefinition.h"
 #include "IO/Path.h"
@@ -36,7 +36,7 @@ namespace TrenchBroom {
     }
     
     namespace Renderer {
-        class TexturedTriangleMeshRenderer;
+        class TexturedIndexRangeRenderer;
         class Vbo;
     }
     
@@ -49,12 +49,16 @@ namespace TrenchBroom {
             typedef std::set<IO::Path> ModelMismatches;
             typedef std::vector<EntityModel*> ModelList;
             
-            typedef std::map<Assets::ModelSpecification, Renderer::TexturedTriangleMeshRenderer*> RendererCache;
+            typedef std::map<Assets::ModelSpecification, Renderer::TexturedIndexRangeRenderer*> RendererCache;
             typedef std::set<Assets::ModelSpecification> RendererMismatches;
-            typedef std::vector<Renderer::TexturedTriangleMeshRenderer*> RendererList;
+            typedef std::vector<Renderer::TexturedIndexRangeRenderer*> RendererList;
             
             Logger* m_logger;
             const IO::EntityModelLoader* m_loader;
+
+            int m_minFilter;
+            int m_magFilter;
+            bool m_resetTextureMode;
 
             mutable ModelCache m_models;
             mutable ModelMismatches m_modelMismatches;
@@ -64,23 +68,26 @@ namespace TrenchBroom {
             mutable ModelList m_unpreparedModels;
             mutable RendererList m_unpreparedRenderers;
         public:
-            EntityModelManager(Logger* logger);
+            EntityModelManager(Logger* logger, int minFilter, int magFilter);
             ~EntityModelManager();
             
             void clear();
+
+            void setTextureMode(int minFilter, int magFilter);
             void setLoader(const IO::EntityModelLoader* loader);
             
             EntityModel* model(const IO::Path& path) const;
-            Renderer::TexturedTriangleMeshRenderer* renderer(const Assets::ModelSpecification& spec) const;
+            Renderer::TexturedIndexRangeRenderer* renderer(const Assets::ModelSpecification& spec) const;
         private:
             EntityModel* loadModel(const IO::Path& path) const;
         public:
             void prepare(Renderer::Vbo& vbo);
         private:
+            void resetTextureMode();
             void prepareModels();
             void prepareRenderers(Renderer::Vbo& vbo);
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__EntityModelManager__) */
+#endif /* defined(TrenchBroom_EntityModelManager) */

@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__MapDocument__
-#define __TrenchBroom__MapDocument__
+#ifndef TrenchBroom_MapDocument
+#define TrenchBroom_MapDocument
 
 #include "Notifier.h"
 #include "TrenchBroom.h"
@@ -32,6 +32,7 @@
 #include "Model/ModelTypes.h"
 #include "Model/NodeCollection.h"
 #include "View/CachingLogger.h"
+#include "View/UndoableCommand.h"
 #include "View/ViewTypes.h"
 
 class Color;
@@ -46,6 +47,7 @@ namespace TrenchBroom {
         class BrushFaceAttributes;
         class ChangeBrushFaceAttributesRequest;
         class EditorContext;
+        class Group;
         class PickResult;
         class PointFile;
     }
@@ -77,7 +79,6 @@ namespace TrenchBroom {
             
             MapViewConfig* m_mapViewConfig;
             Grid* m_grid;
-            bool m_textureLock;
             
             IO::Path m_path;
             size_t m_lastSaveModificationCount;
@@ -94,12 +95,12 @@ namespace TrenchBroom {
             
             ViewEffectsService* m_viewEffectsService;
         public: // notification
-            Notifier1<Command*> commandDoNotifier;
-            Notifier1<Command*> commandDoneNotifier;
-            Notifier1<Command*> commandDoFailedNotifier;
-            Notifier1<Command*> commandUndoNotifier;
-            Notifier1<Command*> commandUndoneNotifier;
-            Notifier1<Command*> commandUndoFailedNotifier;
+            Notifier1<Command::Ptr> commandDoNotifier;
+            Notifier1<Command::Ptr> commandDoneNotifier;
+            Notifier1<Command::Ptr> commandDoFailedNotifier;
+            Notifier1<UndoableCommand::Ptr> commandUndoNotifier;
+            Notifier1<UndoableCommand::Ptr> commandUndoneNotifier;
+            Notifier1<UndoableCommand::Ptr> commandUndoFailedNotifier;
             
             Notifier1<MapDocument*> documentWillBeClearedNotifier;
             Notifier1<MapDocument*> documentWasClearedNotifier;
@@ -110,6 +111,7 @@ namespace TrenchBroom {
             
             Notifier0 editorContextDidChangeNotifier;
             Notifier0 mapViewConfigDidChangeNotifier;
+            Notifier0 currentLayerDidChangeNotifier;
             
             Notifier0 selectionWillChangeNotifier;
             Notifier1<const Selection&> selectionDidChangeNotifier;
@@ -122,6 +124,9 @@ namespace TrenchBroom {
             
             Notifier1<const Model::NodeList&> nodeVisibilityDidChangeNotifier;
             Notifier1<const Model::NodeList&> nodeLockingDidChangeNotifier;
+            
+            Notifier1<Model::Group*> groupWasOpenedNotifier;
+            Notifier1<Model::Group*> groupWasClosedNotifier;
             
             Notifier1<const Model::BrushFaceList&> brushFacesDidChangeNotifier;
             
@@ -163,8 +168,8 @@ namespace TrenchBroom {
             
             void setViewEffectsService(ViewEffectsService* viewEffectsService);
         public: // new, load, save document
-            void newDocument(const BBox3& worldBounds, Model::GamePtr game, Model::MapFormat::Type mapFormat);
-            void loadDocument(const BBox3& worldBounds, Model::GamePtr game, const IO::Path& path);
+            void newDocument(Model::MapFormat::Type mapFormat, const BBox3& worldBounds, Model::GamePtr game);
+            void loadDocument(Model::MapFormat::Type mapFormat, const BBox3& worldBounds, Model::GamePtr game, const IO::Path& path);
             void saveDocument();
             void saveDocumentAs(const IO::Path& path);
             void saveDocumentTo(const IO::Path& path);
@@ -174,7 +179,8 @@ namespace TrenchBroom {
         public: // copy and paste
             String serializeSelectedNodes();
             String serializeSelectedBrushFaces();
-            bool paste(const String& str);
+            
+            PasteType paste(const String& str);
         private:
             bool pasteNodes(const Model::NodeList& nodes);
             bool pasteBrushFaces(const Model::BrushFaceList& faces);
@@ -222,16 +228,15 @@ namespace TrenchBroom {
         public: // adding, removing, reparenting, and duplicating nodes, declared in MapFacade interface
             void addNode(Model::Node* node, Model::Node* parent);
             void removeNode(Model::Node* node);
-            
+
             Model::NodeList addNodes(const Model::ParentChildrenMap& nodes);
+            Model::NodeList addNodes(const Model::NodeList& nodes, Model::Node* parent);
             void removeNodes(const Model::NodeList& nodes);
 
             void reparentNodes(Model::Node* newParent, const Model::NodeList& children);
             void reparentNodes(const Model::ParentChildrenMap& nodes);
             bool deleteObjects();
             bool duplicateObjects();
-        public: // creating new brushes from convex hull of selection
-            bool createBrushFromConvexHull();
         public: // group management
             void groupSelection(const String& name);
             void ungroupSelection();
@@ -241,10 +246,11 @@ namespace TrenchBroom {
             void closeGroup();
         public: // modifying transient node attributes, declared in MapFacade interface
             void isolate(const Model::NodeList& nodes);
-            void hide(const Model::NodeList& nodes);
+            void hide(const Model::NodeList nodes); // Don't take the nodes by reference!
             void hideSelection();
             void show(const Model::NodeList& nodes);
             void showAll();
+            void ensureVisible(const Model::NodeList& nodes);
             void resetVisibility(const Model::NodeList& nodes);
             
             void lock(const Model::NodeList& nodes);
@@ -254,12 +260,17 @@ namespace TrenchBroom {
             bool translateObjects(const Vec3& delta);
             bool rotateObjects(const Vec3& center, const Vec3& axis, FloatType angle);
             bool flipObjects(const Vec3& center, Math::Axis::Type axis);
+        public:
+            bool createBrush(const Vec3::List& points);
+            bool csgConvexMerge();
+            bool csgSubtract();
+            bool csgIntersect();
         public: // modifying entity attributes, declared in MapFacade interface
             bool setAttribute(const Model::AttributeName& name, const Model::AttributeValue& value);
             bool renameAttribute(const Model::AttributeName& oldName, const Model::AttributeName& newName);
             bool removeAttribute(const Model::AttributeName& name);
             
-            bool convertEntityColorRange(const Model::AttributeName& name, Model::ColorRange::Type range);
+            bool convertEntityColorRange(const Model::AttributeName& name, Assets::ColorRange::Type range);
         public: // brush resizing, declared in MapFacade interface
             bool resizeBrushes(const Model::BrushFaceList& faces, const Vec3& delta);
         public: // modifying face attributes, declared in MapFacade interface
@@ -271,6 +282,8 @@ namespace TrenchBroom {
             bool shearTextures(const Vec2f& factors);
         public: // modifying vertices, declared in MapFacade interface
             void rebuildBrushGeometry(const Model::BrushList& brushes);
+            
+            using MapFacade::snapVertices;
             bool snapVertices(const Model::VertexToBrushesMap& vertices, size_t snapTo);
             bool findPlanePoints();
             
@@ -281,6 +294,8 @@ namespace TrenchBroom {
             bool splitFaces(const Model::VertexToFacesMap& faces, const Vec3& delta);
         private: // subclassing interface for certain operations which are available from this class, but can only be implemented in a subclass
             virtual void performRebuildBrushGeometry(const Model::BrushList& brushes) = 0;
+        public: // debug commands
+            void printVertices();
         public: // command processing
             bool canUndoLastCommand() const;
             bool canRedoNextCommand() const;
@@ -296,7 +311,7 @@ namespace TrenchBroom {
             void commitTransaction();
             void cancelTransaction();
         private:
-            bool submit(UndoableCommand* command);
+            bool submit(UndoableCommand::Ptr command);
         private: // subclassing interface for command processing
             virtual bool doCanUndoLastCommand() const = 0;
             virtual bool doCanRedoNextCommand() const = 0;
@@ -311,15 +326,16 @@ namespace TrenchBroom {
             virtual void doEndTransaction() = 0;
             virtual void doRollbackTransaction() = 0;
 
-            virtual bool doSubmit(UndoableCommand* command) = 0;
+            virtual bool doSubmit(UndoableCommand::Ptr command) = 0;
         public: // asset state management
             void commitPendingAssets();
         public: // picking
             void pick(const Ray3& pickRay, Model::PickResult& pickResult) const;
         private: // world management
-            void createWorld(const BBox3& worldBounds, Model::GamePtr game, Model::MapFormat::Type mapFormat);
-            void loadWorld(const BBox3& worldBounds, Model::GamePtr game, const IO::Path& path);
+            void createWorld(Model::MapFormat::Type mapFormat, const BBox3& worldBounds, Model::GamePtr game);
+            void loadWorld(Model::MapFormat::Type mapFormat, const BBox3& worldBounds, Model::GamePtr game, const IO::Path& path);
             void clearWorld();
+            void initializeWorld(const BBox3& worldBounds);
         public: // asset management
             Assets::EntityDefinitionFileSpec entityDefinitionFile() const;
             Assets::EntityDefinitionFileSpec::List allEntityDefinitionFiles() const;
@@ -337,15 +353,14 @@ namespace TrenchBroom {
             void loadEntityDefinitions();
             void unloadEntityDefinitions();
             
-            
             void loadEntityModels();
             void unloadEntityModels();
-            void clearEntityModels();
             
             void loadTextures();
             void loadBuiltinTextures();
             void loadExternalTextures();
             void unloadTextures();
+            void reloadTextures();
         protected:
             void addExternalTextureCollections(const StringList& names);
             void updateExternalTextureCollectionProperty();
@@ -353,9 +368,11 @@ namespace TrenchBroom {
             void setEntityDefinitions();
             void setEntityDefinitions(const Model::NodeList& nodes);
             void unsetEntityDefinitions();
+            void reloadEntityDefinitions();
             
             void setEntityModels();
             void setEntityModels(const Model::NodeList& nodes);
+            void clearEntityModels();
             void unsetEntityModels();
 
             void setTextures();
@@ -363,7 +380,7 @@ namespace TrenchBroom {
             void setTextures(const Model::BrushFaceList& faces);
             
             void unsetTextures();
-        private: // search paths and mods
+        protected: // search paths and mods
             IO::Path::List externalSearchPaths() const;
             void updateGameSearchPaths();
         public:
@@ -382,6 +399,7 @@ namespace TrenchBroom {
             void setPath(const IO::Path& path);
         public: // modification count
             bool modified() const;
+            size_t modificationCount() const;
         private:
             void setLastSaveModificationCount();
             void clearModificationCount();
@@ -410,4 +428,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__MapDocument__) */
+#endif /* defined(TrenchBroom_MapDocument) */

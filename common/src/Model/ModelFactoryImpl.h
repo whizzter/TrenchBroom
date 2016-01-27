@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__ModelFactoryImpl__
-#define __TrenchBroom__ModelFactoryImpl__
+#ifndef TrenchBroom_ModelFactoryImpl
+#define TrenchBroom_ModelFactoryImpl
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
@@ -30,6 +30,7 @@
 namespace TrenchBroom {
     namespace Model {
         class BrushContentTypeBuilder;
+        class BrushFaceAttributes;
         
         class ModelFactoryImpl : public ModelFactory {
         private:
@@ -45,10 +46,11 @@ namespace TrenchBroom {
             Group* doCreateGroup(const String& name) const;
             Entity* doCreateEntity() const;
             Brush* doCreateBrush(const BBox3& worldBounds, const BrushFaceList& faces) const;
-            BrushFace* doCreateFace(const Vec3& point1, const Vec3& point2, const Vec3& point3, const String& textureName) const;
-            BrushFace* doCreateFace(const Vec3& point1, const Vec3& point2, const Vec3& point3, const String& textureName, const Vec3& texAxisX, const Vec3& texAxisY) const;
+            
+            BrushFace* doCreateFace(const Vec3& point1, const Vec3& point2, const Vec3& point3, const BrushFaceAttributes& attribs) const;
+            BrushFace* doCreateFace(const Vec3& point1, const Vec3& point2, const Vec3& point3, const BrushFaceAttributes& attribs, const Vec3& texAxisX, const Vec3& texAxisY) const;
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__ModelFactoryImpl__) */
+#endif /* defined(TrenchBroom_ModelFactoryImpl) */

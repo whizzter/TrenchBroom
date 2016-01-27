@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__Entity__
-#define __TrenchBroom__Entity__
+#ifndef TrenchBroom_Entity
+#define TrenchBroom_Entity
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
@@ -45,7 +45,7 @@ namespace TrenchBroom {
             
             bool pointEntity() const;
             Vec3 origin() const;
-            Quat3 rotation() const;
+            Mat4x4 rotation() const;
             FloatType area(Math::Axis::Type axis) const;
         private:
             void setOrigin(const Vec3& origin);
@@ -55,6 +55,8 @@ namespace TrenchBroom {
             Assets::EntityModel* model() const;
             void setModel(Assets::EntityModel* model);
         private: // implement Node interface
+            const BBox3& doGetBounds() const;
+
             Node* doClone(const BBox3& worldBounds) const;
             NodeSnapshot* doTakeSnapshot();
             
@@ -62,9 +64,11 @@ namespace TrenchBroom {
             bool doCanRemoveChild(const Node* child) const;
             bool doRemoveIfEmpty() const;
 
-            void doDescendantWasAdded(Node* node);
-            void doDescendantWasRemoved(Node* oldParent, Node* node);
-            void doDescendantDidChange(Node* node);
+            void doChildWasAdded(Node* node);
+            void doChildWasRemoved(Node* node);
+
+            void doNodeBoundsDidChange();
+            void doChildBoundsDidChange(Node* node);
 
             bool doSelectable() const;
             
@@ -81,8 +85,6 @@ namespace TrenchBroom {
             Vec3 doGetLinkSourceAnchor() const;
             Vec3 doGetLinkTargetAnchor() const;
         private: // implement Object interface
-            const BBox3& doGetBounds() const;
-
             Node* doGetContainer() const;
             Layer* doGetLayer() const;
             Group* doGetGroup() const;
@@ -100,4 +102,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__Entity__) */
+#endif /* defined(TrenchBroom_Entity) */

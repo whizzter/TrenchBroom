@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__BorderPanel__
-#define __TrenchBroom__BorderPanel__
+#ifndef TrenchBroom_BorderPanel
+#define TrenchBroom_BorderPanel
 
 #include <wx/panel.h>
 
@@ -30,10 +30,10 @@ namespace TrenchBroom {
             int m_thickness;
         public:
             BorderPanel();
-            BorderPanel(wxWindow* parent, int borders, int thickness = 1);
+            BorderPanel(wxWindow* parent, int borders = wxALL, int thickness = 1);
             virtual ~BorderPanel();
             
-            void Create(wxWindow* parent, int borders, int thickness = 1);
+            void Create(wxWindow* parent, int borders = wxALL, int thickness = 1);
             
             void OnPaint(wxPaintEvent& event);
 
@@ -44,4 +44,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__BorderPanel__) */
+#endif /* defined(TrenchBroom_BorderPanel) */

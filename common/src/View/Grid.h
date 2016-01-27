@@ -17,9 +17,10 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__Grid__
-#define __TrenchBroom__Grid__
+#ifndef TrenchBroom_Grid
+#define TrenchBroom_Grid
 
+#include "Macros.h"
 #include "TrenchBroom.h"
 #include "VecMath.h"
 #include "Notifier.h"
@@ -92,18 +93,19 @@ namespace TrenchBroom {
                 if (!snap())
                     return f;
 
-                const size_t actSize = actualSize();
+                const T actSize = static_cast<T>(actualSize());
                 switch (snapDir) {
                     case SnapDir_None:
                         return actSize * Math::round(f / actSize);
                     case SnapDir_Up: {
                         const T s = actSize * std::ceil(f / actSize);
-                        return (skip && s == f) ? s + actualSize() : s;
+                        return (skip && Math::eq(s, f)) ? s + actualSize() : s;
                     }
                     case SnapDir_Down: {
                         const T s = actSize * std::floor(f / actSize);
-                        return (skip && s == f) ? s - actualSize() : s;
+                        return (skip && Math::eq(s, f)) ? s - actualSize() : s;
                     }
+					switchDefault()
                 }
             }
         public: // Snap vectors.
@@ -204,4 +206,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__Grid__) */
+#endif /* defined(TrenchBroom_Grid) */

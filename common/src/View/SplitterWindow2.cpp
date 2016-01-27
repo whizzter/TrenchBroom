@@ -38,6 +38,7 @@ namespace TrenchBroom {
         wxPanel(parent, wxID_ANY),
         m_splitMode(SplitMode_Unset),
         m_sash(NULL),
+        m_maximizedWindow(NULL),
         m_sashGravity(0.5f),
         m_initialSashPosition(-1),
         m_sashPosition(-1),
@@ -61,6 +62,27 @@ namespace TrenchBroom {
             split(top, bottom, topMin, bottomMin, SplitMode_Vertical);
         }
         
+        bool SplitterWindow2::isMaximized(wxWindow* window) const {
+            assert(window == m_windows[0] || window == m_windows[1]);
+            return (m_maximizedWindow == window);
+        }
+        
+        void SplitterWindow2::maximize(wxWindow* window) {
+            assert(window == m_windows[0] || window == m_windows[1]);
+            m_maximizedWindow = window;
+            m_maximizedWindow->Show();
+            unmaximizedWindow()->Hide();
+            sizeWindows();
+        }
+        
+        void SplitterWindow2::restore() {
+            if (m_maximizedWindow != NULL) {
+                unmaximizedWindow()->Show();
+                m_maximizedWindow = NULL;
+                sizeWindows();
+            }
+        }
+
         void SplitterWindow2::split(wxWindow* window1, wxWindow* window2, const wxSize& min1, const wxSize& min2, const SplitMode splitMode) {
             assert(window1 != NULL);
             assert(window1->GetParent() == this);
@@ -112,14 +134,20 @@ namespace TrenchBroom {
         }
         
         void SplitterWindow2::OnMouseEnter(wxMouseEvent& event) {
+            if (IsBeingDeleted()) return;
+
             setSashCursor();
         }
         
         void SplitterWindow2::OnMouseLeave(wxMouseEvent& event) {
+            if (IsBeingDeleted()) return;
+
             setSashCursor();
         }
         
         void SplitterWindow2::OnMouseButton(wxMouseEvent& event) {
+            if (IsBeingDeleted()) return;
+
             assert(m_splitMode != SplitMode_Unset);
             
             if (event.LeftDown())
@@ -131,6 +159,8 @@ namespace TrenchBroom {
         }
         
         void SplitterWindow2::OnMouseMotion(wxMouseEvent& event) {
+            if (IsBeingDeleted()) return;
+
             assert(m_splitMode != SplitMode_Unset);
             
             const wxPoint screenPos = wxGetMousePosition();
@@ -144,6 +174,8 @@ namespace TrenchBroom {
         }
         
         void SplitterWindow2::OnMouseCaptureLost(wxMouseCaptureLostEvent& event) {
+            if (IsBeingDeleted()) return;
+
             setSashCursor();
         }
         
@@ -166,11 +198,13 @@ namespace TrenchBroom {
                     return wxCursor(wxCURSOR_SIZEWE);
                 case SplitMode_Unset:
                     return wxCursor();
-                    DEFAULT_SWITCH()
+                    switchDefault()
             }
         }
         
         void SplitterWindow2::OnIdle(wxIdleEvent& event) {
+            if (IsBeingDeleted()) return;
+
             if (IsShownOnScreen()) {
                 Unbind(wxEVT_IDLE, &SplitterWindow2::OnIdle, this);
                 
@@ -179,6 +213,8 @@ namespace TrenchBroom {
             }
         }
         void SplitterWindow2::OnSize(wxSizeEvent& event) {
+            if (IsBeingDeleted()) return;
+
             updateSashPosition(m_oldSize, event.GetSize());
             sizeWindows();
             m_oldSize = event.GetSize();
@@ -222,33 +258,43 @@ namespace TrenchBroom {
             if (m_splitMode != SplitMode_Unset) {
                 const wxWindowUpdateLocker lockUpdates(this);
                 
-                const int origH = h(GetClientAreaOrigin());
-                const int origV = h(GetClientAreaOrigin());
-                const int sizeH = h(GetClientSize());
-                const int sizeV = v(GetClientSize());
-                
-                wxPoint pos[2];
-                wxSize size[2];
-                
-                setHV(pos[0], origH, origV);
-                setHV(pos[1], origH + m_sashPosition + sashSize(), origV);
-                setHV(size[0], m_sashPosition, sizeV);
-                setHV(size[1], sizeH - m_sashPosition - sashSize(), sizeV);
-                
-                for (size_t i = 0; i < NumWindows; ++i)
-                    m_windows[i]->SetSize(wxRect(pos[i], size[i]));
-                
-                wxPoint sashPos;
-                wxSize sashSize;
-                
-                setHV(sashPos, origH + m_sashPosition, origV);
-                setHV(sashSize, SplitterWindow2::sashSize(), sizeV);
-                m_sash->SetSize(wxRect(sashPos, sashSize));
+                if (m_maximizedWindow != NULL) {
+                    m_maximizedWindow->SetSize(wxRect(GetClientAreaOrigin(), GetClientSize()));
+                    m_sash->SetSize(wxRect(wxPoint(0, 0),wxPoint(0, 0)));
+                } else {
+                    const int origH = h(GetClientAreaOrigin());
+                    const int origV = h(GetClientAreaOrigin());
+                    const int sizeH = h(GetClientSize());
+                    const int sizeV = v(GetClientSize());
+                    
+                    wxPoint pos[2];
+                    wxSize size[2];
+                    
+                    setHV(pos[0], origH, origV);
+                    setHV(pos[1], origH + m_sashPosition + sashSize(), origV);
+                    setHV(size[0], m_sashPosition, sizeV);
+                    setHV(size[1], sizeH - m_sashPosition - sashSize(), sizeV);
+                    
+                    for (size_t i = 0; i < NumWindows; ++i)
+                        m_windows[i]->SetSize(wxRect(pos[i], size[i]));
+                    
+                    wxPoint sashPos;
+                    wxSize sashSize;
+                    
+                    setHV(sashPos, origH + m_sashPosition, origV);
+                    setHV(sashSize, SplitterWindow2::sashSize(), sizeV);
+                    m_sash->SetSize(wxRect(sashPos, sashSize));
+                }
             }
         }
         
         int SplitterWindow2::sashSize() const {
             return 2;
+        }
+ 
+        wxWindow* SplitterWindow2::unmaximizedWindow() {
+            assert(m_maximizedWindow != NULL);
+            return m_windows[0] == m_maximizedWindow ? m_windows[1] : m_windows[0];
         }
     }
 }

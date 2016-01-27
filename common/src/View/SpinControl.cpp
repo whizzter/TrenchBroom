@@ -67,8 +67,8 @@ namespace TrenchBroom {
         m_shiftIncrement(0.0),
         m_ctrlIncrement(0.0),
         m_value(0.0),
-        m_digits(0),
-        m_format("%g") {
+        m_minDigits(0),
+        m_maxDigits(0) { // m_digits must be different from 0 because it's being set to 0 below in the constructor
             m_text = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER | wxTE_RIGHT);
             m_spin = new wxSpinButton(this, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxSP_VERTICAL);
             
@@ -80,6 +80,7 @@ namespace TrenchBroom {
             m_spin->SetRange(-32000, 32000);
             
             DoSetValue(m_value);
+            SetDigits(0, 0);
             
             wxSizer* textSizer = new wxBoxSizer(wxVERTICAL);
             textSizer->Add(m_text, 0, wxEXPAND | wxALIGN_CENTRE_VERTICAL);
@@ -102,6 +103,7 @@ namespace TrenchBroom {
             
             m_text->Bind(wxEVT_KEY_DOWN, &SpinControl::OnTextKeyDown, this);
             m_text->Bind(wxEVT_COMMAND_TEXT_ENTER, &SpinControl::OnTextEnter, this);
+            m_text->Bind(wxEVT_SET_FOCUS, &SpinControl::OnTextSetFocus, this);
             m_text->Bind(wxEVT_KILL_FOCUS, &SpinControl::OnTextKillFocus, this);
             m_spin->Bind(wxEVT_SPIN_UP, &SpinControl::OnSpinButtonUp, this);
             m_spin->Bind(wxEVT_SPIN_DOWN, &SpinControl::OnSpinButtonDown, this);
@@ -144,11 +146,13 @@ namespace TrenchBroom {
             m_ctrlIncrement = ctrlIncrement;
         }
         
-        void SpinControl::SetDigits(unsigned int digits) {
-            if (digits == m_digits)
-                return;
-            m_digits = digits;
-            m_format.Printf("%6.%%0uf", m_digits);
+        void SpinControl::SetDigits(unsigned int minDigits, unsigned int maxDigits) {
+            assert(minDigits <= maxDigits);
+            m_minDigits = minDigits;
+            m_maxDigits = maxDigits;
+            
+            m_format.Clear();
+            m_format << "%." << m_maxDigits << "f";
             DoSetValue(m_value);
         }
         
@@ -178,7 +182,7 @@ namespace TrenchBroom {
             return wxSize(spinSize.x + textSize.x + 0, textSize.y);
         }
         
-        bool SpinControl::InRange(double value) {
+        bool SpinControl::InRange(double value) const {
             return value >= m_minValue && value <= m_maxValue;
         }
         
@@ -194,7 +198,7 @@ namespace TrenchBroom {
             if (!InRange(value))
                 return false;
             
-            wxString str(wxString::Format(m_format.c_str(), value));
+            const wxString str = DoFormat(value);
             if (value == m_value && str == m_text->GetValue())
                 return false;
             
@@ -205,6 +209,21 @@ namespace TrenchBroom {
             return true;
         }
         
+        wxString SpinControl::DoFormat(const double value) const {
+            wxString str(wxString::Format(m_format.c_str(), value));
+
+            if (m_minDigits < m_maxDigits) {
+                while (str.Length() > m_minDigits && str.Last() == '0')
+                    str.RemoveLast();
+                if (str.Last() == '.') {
+                    assert(m_minDigits == 0);
+                    str.RemoveLast();
+                }
+            }
+            
+            return str;
+        }
+
         bool SpinControl::DoSendEvent(const bool spin, const double value) {
             SpinControlEvent event(SPIN_CONTROL_EVENT, GetId(), spin, value);
             event.SetEventObject( this );
@@ -225,6 +244,8 @@ namespace TrenchBroom {
         }
         
         void SpinControl::OnTextKeyDown(wxKeyEvent& event) {
+            if (IsBeingDeleted()) return;
+
             switch (event.GetKeyCode()) {
                 case WXK_UP:
                     Spin(+1.0, event);
@@ -239,25 +260,41 @@ namespace TrenchBroom {
         }
         
         void SpinControl::OnTextEnter(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             if (SyncFromText())
                 DoSendEvent(false, GetValue());
         }
         
+        void SpinControl::OnTextSetFocus(wxFocusEvent& event) {
+            if (IsBeingDeleted()) return;
+            m_text->SelectAll();
+            event.Skip();
+        }
+
         void SpinControl::OnTextKillFocus(wxFocusEvent& event) {
+            if (IsBeingDeleted()) return;
+
             if (SyncFromText())
                 DoSendEvent(false, GetValue());
             event.Skip();
         }
         
         void SpinControl::OnSpinButtonUp(wxSpinEvent& event) {
+            if (IsBeingDeleted()) return;
+
             Spin(+1.0, wxGetMouseState());
         }
         
         void SpinControl::OnSpinButtonDown(wxSpinEvent& event) {
+            if (IsBeingDeleted()) return;
+
             Spin(-1.0, wxGetMouseState());
         }
         
         void SpinControl::OnMouseWheel(wxMouseEvent& event) {
+            if (IsBeingDeleted()) return;
+
             double multiplier = event.GetWheelRotation() > 0 ? 1.0 : -1.0;
 #if defined __APPLE__
             if (event.ShiftDown())
@@ -287,6 +324,8 @@ namespace TrenchBroom {
         }
         
         void SpinControl::OnSetFocus(wxFocusEvent& event) {
+            if (IsBeingDeleted()) return;
+
             // no idea why this is necessary, but it works
             SetFocus();
         }

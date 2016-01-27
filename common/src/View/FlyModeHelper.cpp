@@ -1,18 +1,18 @@
 /*
  Copyright (C) 2010-2014 Kristian Duske
- 
+
  This file is part of TrenchBroom.
- 
+
  TrenchBroom is free software: you can redistribute it and/or modify
  it under the terms of the GNU General Public License as published by
  the Free Software Foundation, either version 3 of the License, or
  (at your option) any later version.
- 
+
  TrenchBroom is distributed in the hope that it will be useful,
  but WITHOUT ANY WARRANTY; without even the implied warranty of
  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  GNU General Public License for more details.
- 
+
  You should have received a copy of the GNU General Public License
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
@@ -21,87 +21,197 @@
 
 #include "PreferenceManager.h"
 #include "Preferences.h"
+#include "SetAny.h"
 #include "Renderer/Camera.h"
+#include "View/ExecutableEvent.h"
 #include "View/KeyboardShortcut.h"
-
-#ifdef __APPLE__
-// Don't include Quickdraw - we don't need it and it leads to symbol redefinition errrors
-#define __QUICKDRAWAPI__
-#include <ApplicationServices/ApplicationServices.h>
-#endif
 
 namespace TrenchBroom {
     namespace View {
+        class FlyModeHelper::CameraEvent : public ExecutableEvent::Executable {
+        private:
+            FlyModeHelper& m_helper;
+            Renderer::Camera& m_camera;
+            Vec3f m_moveDelta;
+            Vec2f m_rotateAngles;
+        public:
+            CameraEvent(FlyModeHelper& helper, Renderer::Camera& camera) :
+            m_helper(helper),
+            m_camera(camera) {}
+
+            void setMoveDelta(const Vec3f& moveDelta) {
+                m_moveDelta = moveDelta;
+            }
+
+            void setRotateAngles(const Vec2f& rotateAngles) {
+                m_rotateAngles = rotateAngles;
+            }
+        private:
+            void execute() {
+                m_camera.moveBy(m_moveDelta);
+                m_camera.rotate(m_rotateAngles.x(), m_rotateAngles.y());
+                m_helper.resetMouse();
+            }
+        };
+
         FlyModeHelper::FlyModeHelper(wxWindow* window, Renderer::Camera& camera) :
         m_window(window),
         m_camera(camera),
-        m_enabled(false) {
-            m_window->Bind(wxEVT_KEY_DOWN, &FlyModeHelper::OnKeyDown, this);
-            m_window->Bind(wxEVT_KEY_UP, &FlyModeHelper::OnKeyUp, this);
-
+        m_enabled(false),
+        m_ignoreMotionEvents(false) {
             m_forward = m_backward = m_left = m_right = false;
             m_lastPollTime = ::wxGetLocalTimeMillis();
-            Start(20);
-        }
-        
-        FlyModeHelper::~FlyModeHelper() {
-            Stop();
-            m_window->Unbind(wxEVT_KEY_DOWN, &FlyModeHelper::OnKeyDown, this);
-            m_window->Unbind(wxEVT_KEY_UP, &FlyModeHelper::OnKeyUp, this);
 
+            Run();
+        }
+
+        FlyModeHelper::~FlyModeHelper() {
+            /* Since the window is already deleted when this destructor is called, we omit the cleanup.
             if (enabled())
                 disable();
+             */
         }
-        
+
         void FlyModeHelper::enable() {
+            wxCriticalSectionLocker lock(m_critical);
             assert(!enabled());
             lockMouse();
             m_enabled = true;
         }
-        
+
         void FlyModeHelper::disable() {
+            wxCriticalSectionLocker lock(m_critical);
             assert(enabled());
             unlockMouse();
             m_enabled = false;
         }
-        
+
         bool FlyModeHelper::enabled() const {
             return m_enabled;
         }
 
         void FlyModeHelper::lockMouse() {
             m_window->SetCursor(wxCursor(wxCURSOR_BLANK));
-            
-#ifdef __APPLE__
-            CGAssociateMouseAndMouseCursorPosition(false);
-            int32_t dx, dy;
-            CGGetLastMouseDelta(&dx, &dy);
-#else
+
             m_originalMousePos = m_window->ScreenToClient(::wxGetMousePosition());
+            m_currentMouseDelta = wxPoint(0,0);
+            m_lastMousePos = m_originalMousePos;
             resetMouse();
-#endif
         }
-        
+
         void FlyModeHelper::unlockMouse() {
-#ifdef __APPLE__
-            CGAssociateMouseAndMouseCursorPosition(true);
-#else
             m_window->WarpPointer(m_originalMousePos.x, m_originalMousePos.y);
-#endif
             m_window->SetCursor(wxNullCursor);
         }
-        
-        void FlyModeHelper::Notify() {
-            const Vec3f delta = moveDelta(pollTime());
-            m_camera.moveBy(delta);
 
-            if (m_enabled) {
-                const Vec2f angles = lookDelta(pollMouseDelta());
-                m_camera.rotate(angles.x(), angles.y());
+        bool FlyModeHelper::keyDown(wxKeyEvent& event) {
+            PreferenceManager& prefs = PreferenceManager::instance();
+            const KeyboardShortcut& forward = prefs.get(Preferences::CameraFlyForward);
+            const KeyboardShortcut& backward = prefs.get(Preferences::CameraFlyBackward);
+            const KeyboardShortcut& left = prefs.get(Preferences::CameraFlyLeft);
+            const KeyboardShortcut& right = prefs.get(Preferences::CameraFlyRight);
+            
+            wxCriticalSectionLocker lock(m_critical);
+            
+            if (forward.matches(event)) {
+                m_forward = true;
+                return true;
+            }
+            if (backward.matches(event)) {
+                m_backward = true;
+                return true;
+            }
+            if (left.matches(event)) {
+                m_left = true;
+                return true;
+            }
+            if (right.matches(event)) {
+                m_right = true;
+                return true;
+            }
+            return false;
+        }
+
+        bool FlyModeHelper::keyUp(wxKeyEvent& event) {
+            PreferenceManager& prefs = PreferenceManager::instance();
+            const KeyboardShortcut& forward = prefs.get(Preferences::CameraFlyForward);
+            const KeyboardShortcut& backward = prefs.get(Preferences::CameraFlyBackward);
+            const KeyboardShortcut& left = prefs.get(Preferences::CameraFlyLeft);
+            const KeyboardShortcut& right = prefs.get(Preferences::CameraFlyRight);
+            
+            wxCriticalSectionLocker lock(m_critical);
+            
+            if (forward.matchesKey(event)) {
+                m_forward = false;
+                return true;
+            }
+            if (backward.matchesKey(event)) {
+                m_backward = false;
+                return true;
+            }
+            if (left.matchesKey(event)) {
+                m_left = false;
+                return true;
+            }
+            if (right.matchesKey(event)) {
+                m_right = false;
+                return true;
+            }
+            return false;
+        }
+
+        void FlyModeHelper::motion(wxMouseEvent& event) {
+            wxCriticalSectionLocker lock(m_critical);
+            if (m_enabled && !m_ignoreMotionEvents) {
+                const wxPoint currentMousePos = m_window->ScreenToClient(::wxGetMousePosition());
+                const wxPoint delta = currentMousePos - m_lastMousePos;
+                m_currentMouseDelta += delta;
+                m_lastMousePos = currentMousePos;
             }
         }
-        
-        Vec3f FlyModeHelper::moveDelta(const float time) const {
+
+        void FlyModeHelper::resetMouse() {
+            wxCriticalSectionLocker lock(m_critical);
+            if (m_enabled) {
+                const SetBool ignoreMotion(m_ignoreMotionEvents);
+                m_lastMousePos = windowCenter();
+                m_window->WarpPointer(m_lastMousePos.x, m_lastMousePos.y);
+            }
+        }
+
+        wxPoint FlyModeHelper::windowCenter() const {
+            const wxSize size = m_window->GetSize();
+            return wxPoint(size.x / 2, size.y / 2);
+        }
+
+        wxThread::ExitCode FlyModeHelper::Entry() {
+            while (!TestDestroy()) {
+                const Vec3f delta = moveDelta();
+                const Vec2f angles = lookDelta();
+
+                if (!delta.null() || !angles.null()) {
+                    if (!TestDestroy() && wxTheApp != NULL) {
+                        CameraEvent* event = new CameraEvent(*this, m_camera);
+                        event->setMoveDelta(delta);
+                        event->setRotateAngles(angles);
+
+                        ExecutableEvent* executable = new ExecutableEvent(event);
+                        wxTheApp->QueueEvent(executable);
+                    }
+                }
+
+                Sleep(20);
+            }
+            return static_cast<ExitCode>(0);
+        }
+
+        Vec3f FlyModeHelper::moveDelta() {
+            wxCriticalSectionLocker lock(m_critical);
+
+            const wxLongLong currentTime = ::wxGetLocalTimeMillis();
+            const float time = static_cast<float>((currentTime - m_lastPollTime).ToLong());
+            m_lastPollTime = currentTime;
+
             const float dist = moveSpeed() * time;
 
             Vec3f delta;
@@ -116,10 +226,16 @@ namespace TrenchBroom {
             return delta;
         }
 
-        Vec2f FlyModeHelper::lookDelta(const wxPoint mouseDelta) const {
+        Vec2f FlyModeHelper::lookDelta() {
+            if (!m_enabled)
+                return Vec2f::Null;
+
+            wxCriticalSectionLocker lock(m_critical);
+
             const Vec2f speed = lookSpeed();
-            const float hAngle = static_cast<float>(mouseDelta.x) * speed.x();
-            const float vAngle = static_cast<float>(mouseDelta.y) * speed.y();
+            const float hAngle = static_cast<float>(m_currentMouseDelta.x) * speed.x();
+            const float vAngle = static_cast<float>(m_currentMouseDelta.y) * speed.y();
+            m_currentMouseDelta.x = m_currentMouseDelta.y = 0;
             return Vec2f(hAngle, vAngle);
         }
 
@@ -131,68 +247,9 @@ namespace TrenchBroom {
                 speed[1] *= -1.0f;
             return speed;
         }
-        
+
         float FlyModeHelper::moveSpeed() const {
             return 256.0f / 1000.0f;
-        }
-
-        float FlyModeHelper::pollTime() {
-            const wxLongLong currentTime = ::wxGetLocalTimeMillis();
-            const float time = static_cast<float>((currentTime - m_lastPollTime).ToLong());
-            m_lastPollTime = currentTime;
-            return time;
-        }
-
-        wxPoint FlyModeHelper::pollMouseDelta() {
-#ifndef __APPLE__
-            const wxPoint currentMousePos = m_window->ScreenToClient(::wxGetMousePosition());
-            const wxPoint delta = currentMousePos - windowCenter();
-            resetMouse();
-            return delta;
-#else
-            int32_t dx, dy;
-            CGGetLastMouseDelta(&dx, &dy);
-            return wxPoint(dx, dy);
-#endif
-        }
-        
-        void FlyModeHelper::resetMouse() {
-#ifndef __APPLE__
-            const wxPoint center = windowCenter();
-            m_window->WarpPointer(center.x, center.y);
-#endif
-        }
-
-        wxPoint FlyModeHelper::windowCenter() const {
-            const wxSize size = m_window->GetSize();
-            return wxPoint(size.x / 2, size.y / 2);
-        }
-
-        void FlyModeHelper::OnKeyDown(wxKeyEvent& event) {
-            onKey(event, true);
-        }
-        
-        void FlyModeHelper::OnKeyUp(wxKeyEvent& event) {
-            onKey(event, false);
-        }
-
-        void FlyModeHelper::onKey(wxKeyEvent& event, const bool down) {
-            PreferenceManager& prefs = PreferenceManager::instance();
-            const KeyboardShortcut& forward = prefs.get(Preferences::CameraFlyForward);
-            const KeyboardShortcut& backward = prefs.get(Preferences::CameraFlyBackward);
-            const KeyboardShortcut& left = prefs.get(Preferences::CameraFlyLeft);
-            const KeyboardShortcut& right = prefs.get(Preferences::CameraFlyRight);
-            
-            if (forward.matches(event))
-                m_forward = down;
-            else if (backward.matches(event))
-                m_backward = down;
-            else if (left.matches(event))
-                m_left = down;
-            else if (right.matches(event))
-                m_right = down;
-            else
-                event.Skip();
         }
     }
 }

@@ -17,12 +17,11 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__MoveObjectsTool__
-#define __TrenchBroom__MoveObjectsTool__
+#ifndef TrenchBroom_MoveObjectsTool
+#define TrenchBroom_MoveObjectsTool
 
 #include "TrenchBroom.h"
 #include "VecMath.h"
-#include "View/MapViewToolPage.h"
 #include "View/MoveToolHelper.h"
 #include "View/Tool.h"
 #include "View/ViewTypes.h"
@@ -35,7 +34,7 @@ namespace TrenchBroom {
     namespace View {
         class InputState;
         
-        class MoveObjectsTool : public Tool, public MoveToolDelegate, public MapViewToolPage {
+        class MoveObjectsTool : public Tool, public MoveToolDelegate {
         private:
             MapDocumentWPtr m_document;
             bool m_duplicateObjects;
@@ -60,4 +59,4 @@ namespace TrenchBroom {
     }
 }
 
-#endif /* defined(__TrenchBroom__MoveObjectsTool__) */
+#endif /* defined(TrenchBroom_MoveObjectsTool) */

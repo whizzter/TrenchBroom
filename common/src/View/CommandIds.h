@@ -31,12 +31,6 @@ namespace TrenchBroom {
                 const int EditSelectSiblings                 = Lowest +   3;
                 const int EditSelectTouching                 = Lowest +   4;
                 const int EditSelectNone                     = Lowest +   5;
-                const int EditHideSelected                   = Lowest +   6;
-                const int EditHideUnselected                 = Lowest +   7;
-                const int EditUnhideAll                      = Lowest +   8;
-                const int EditLockSelected                   = Lowest +   9;
-                const int EditLockUnselected                 = Lowest +  10;
-                const int EditUnlockAll                      = Lowest +  11;
                 const int EditSnapVertices                   = Lowest +  12;
                 const int EditToggleTextureLock              = Lowest +  42;
                 const int ViewToggleShowGrid                 = Lowest +  43;
@@ -56,7 +50,7 @@ namespace TrenchBroom {
                 const int ViewMoveCameraRight                = Lowest +  57;
                 const int ViewMoveCameraUp                   = Lowest +  58;
                 const int ViewMoveCameraDown                 = Lowest +  59;
-                const int ViewCenterCameraOnSelection        = Lowest +  72;
+                const int ViewFocusCameraOnSelection         = Lowest +  72;
                 const int ViewIncGridSize                    = Lowest +  74;
                 const int ViewDecGridSize                    = Lowest +  75;
                 const int FileLoadPointFile                  = Lowest +  76;
@@ -64,22 +58,42 @@ namespace TrenchBroom {
                 const int ViewMoveCameraToNextPoint          = Lowest +  78;
                 const int ViewMoveCameraToPreviousPoint      = Lowest +  79;
 
-                const int HelpShowHelp                       = Lowest +  83;
                 const int EditPasteAtOriginalPosition        = Lowest +  84;
                 const int EditSelectByFilePosition           = Lowest +  85;
                 const int ViewSwitchToMapInspector           = Lowest +  86;
                 const int ViewSwitchToEntityInspector        = Lowest +  87;
                 const int ViewSwitchToFaceInspector          = Lowest +  88;
-                const int EditNavigateUp                     = Lowest +  95;
+                const int ViewToggleMaximizeCurrentView      = Lowest +  89;
+                const int ViewToggleInfoPanel            = Lowest +  90;
+                const int ViewToggleInspector       = Lowest +  91;
+                
                 const int FileOpenRecent                     = Lowest +  96;
                 const int EditPrintFilePositions             = Lowest + 101;
                 const int EditSelectInside                   = Lowest + 103;
-                const int ViewToggleCameraFlyMode            = Lowest + 106;
+                const int EditSelectTall                     = Lowest + 104;
                 const int EditRepeat                         = Lowest + 107;
                 const int EditClearRepeat                    = Lowest + 108;
                 const int ViewMoveCameraToPosition           = Lowest + 109;
                 const int EditReplaceTexture                 = Lowest + 110;
 
+                const int EditToggleCreateComplexBrushTool   = Lowest + 111;
+                const int EditToggleVertexTool               = Lowest + 112;
+                const int EditToggleRotateObjectsTool        = Lowest + 113;
+                const int EditCsgConvexMerge                 = Lowest + 116;
+                const int EditCsgSubtract                    = Lowest + 117;
+                const int EditCsgIntersect                   = Lowest + 118;
+                const int EditGroupSelection                 = Lowest + 120;
+                const int EditUngroupSelection               = Lowest + 121;
+                const int ViewHideSelection                  = Lowest + 122;
+                const int ViewIsolateSelection               = Lowest + 123;
+                const int ViewUnhideAll                      = Lowest + 124;
+                const int EditToggleClipTool                 = Lowest + 125;
+                const int EditDeactivateTool                 = Lowest + 126;
+                
+                const int DebugPrintVertices                 = Lowest + 127;
+                const int DebugCreateBrush                   = Lowest + 128;
+                const int DebugCopyJSShortcuts               = Lowest + 129;
+                
                 const int FileRecentDocuments                = Lowest + 190;
 
                 const int Highest                            = Lowest + 200;
@@ -88,14 +102,12 @@ namespace TrenchBroom {
             namespace Actions {
                 const int Lowest                             = Menu::Highest + 1;
                 const int Nothing                            = wxID_NONE;
-                const int ToggleCreateBrushTool              = Lowest +   1;
                 const int PerformCreateBrush                 = Lowest +   2;
                 const int ToggleClipTool                     = Lowest +   3;
                 const int ToggleClipSide                     = Lowest +   4;
                 const int PerformClip                        = Lowest +   5;
-                const int DeleteLastClipPoint                = Lowest +   6;
+                const int RemoveLastClipPoint                = Lowest +   6;
 
-                const int ToggleVertexTool                   = Lowest +   7;
                 const int MoveVerticesForward                = Lowest +   8;
                 const int MoveVerticesBackward               = Lowest +   9;
                 const int MoveVerticesLeft                   = Lowest +  10;
@@ -103,65 +115,55 @@ namespace TrenchBroom {
                 const int MoveVerticesUp                     = Lowest +  12;
                 const int MoveVerticesDown                   = Lowest +  13;
 
-                const int ToggleRotateObjectsTool            = Lowest +  14;
-                const int ToggleFlyMode                      = Lowest +  15;
-                
                 const int ToggleMovementRestriction          = Lowest +  16;
+                const int SetMovementRestrictionX            = Lowest +  17;
+                const int SetMovementRestrictionY            = Lowest +  18;
+                const int SetMovementRestrictionZ            = Lowest +  19;
 
-                const int DeleteObjects                      = Lowest +  17;
+                const int MoveObjectsForward                 = Lowest +  20;
+                const int MoveObjectsRight                   = Lowest +  21;
+                const int MoveObjectsBackward                = Lowest +  22;
+                const int MoveObjectsLeft                    = Lowest +  23;
+                const int MoveObjectsUp                      = Lowest +  24;
+                const int MoveObjectsDown                    = Lowest +  25;
                 
-                const int MoveObjectsForward                 = Lowest +  18;
-                const int MoveObjectsRight                   = Lowest +  19;
-                const int MoveObjectsBackward                = Lowest +  20;
-                const int MoveObjectsLeft                    = Lowest +  21;
-                const int MoveObjectsUp                      = Lowest +  22;
-                const int MoveObjectsDown                    = Lowest +  23;
+                const int RollObjectsCW                      = Lowest +  26;
+                const int RollObjectsCCW                     = Lowest +  27;
+                const int PitchObjectsCW                     = Lowest +  28;
+                const int PitchObjectsCCW                    = Lowest +  29;
+                const int YawObjectsCW                       = Lowest +  30;
+                const int YawObjectsCCW                      = Lowest +  31;
                 
-                const int RollObjectsCW                      = Lowest +  24;
-                const int RollObjectsCCW                     = Lowest +  25;
-                const int PitchObjectsCW                     = Lowest +  26;
-                const int PitchObjectsCCW                    = Lowest +  27;
-                const int YawObjectsCW                       = Lowest +  28;
-                const int YawObjectsCCW                      = Lowest +  29;
+                const int FlipObjectsHorizontally            = Lowest +  32;
+                const int FlipObjectsVertically              = Lowest +  33;
                 
-                const int FlipObjectsHorizontally            = Lowest +  30;
-                const int FlipObjectsVertically              = Lowest +  31;
-                
-                const int DuplicateObjectsForward            = Lowest +  32;
-                const int DuplicateObjectsRight              = Lowest +  33;
-                const int DuplicateObjectsBackward           = Lowest +  34;
-                const int DuplicateObjectsLeft               = Lowest +  35;
-                const int DuplicateObjectsUp                 = Lowest +  36;
-                const int DuplicateObjectsDown               = Lowest +  37;
+                const int DuplicateObjectsForward            = Lowest +  34;
+                const int DuplicateObjectsRight              = Lowest +  35;
+                const int DuplicateObjectsBackward           = Lowest +  36;
+                const int DuplicateObjectsLeft               = Lowest +  37;
+                const int DuplicateObjectsUp                 = Lowest +  38;
+                const int DuplicateObjectsDown               = Lowest +  39;
             
-                const int DuplicateObjects                   = Lowest +  38;
+                const int MoveTexturesUp                     = Lowest +  40;
+                const int MoveTexturesRight                  = Lowest +  41;
+                const int MoveTexturesDown                   = Lowest +  42;
+                const int MoveTexturesLeft                   = Lowest +  43;
+                const int RotateTexturesCW                   = Lowest +  44;
+                const int RotateTexturesCCW                  = Lowest +  45;
 
-                const int MoveTexturesUp                     = Lowest +  39;
-                const int MoveTexturesRight                  = Lowest +  40;
-                const int MoveTexturesDown                   = Lowest +  41;
-                const int MoveTexturesLeft                   = Lowest +  42;
-                const int RotateTexturesCW                   = Lowest +  43;
-                const int RotateTexturesCCW                  = Lowest +  44;
-
-                const int Cancel                             = Lowest +  45;
+                const int Cancel                             = Lowest +  46;
                 
-                const int MoveRotationCenterForward          = Lowest +  46;
-                const int MoveRotationCenterBackward         = Lowest +  47;
-                const int MoveRotationCenterLeft             = Lowest +  48;
-                const int MoveRotationCenterRight            = Lowest +  49;
-                const int MoveRotationCenterUp               = Lowest +  50;
-                const int MoveRotationCenterDown             = Lowest +  51;
+                const int MoveRotationCenterForward          = Lowest +  47;
+                const int MoveRotationCenterBackward         = Lowest +  48;
+                const int MoveRotationCenterLeft             = Lowest +  49;
+                const int MoveRotationCenterRight            = Lowest +  50;
+                const int MoveRotationCenterUp               = Lowest +  51;
+                const int MoveRotationCenterDown             = Lowest +  52;
 
-                const int CycleMapViews                      = Lowest +  52;
+                const int CycleMapViews                      = Lowest +  53;
                 
-                const int CreateConvexHull                   = Lowest +  53;
-                const int GroupSelection                     = Lowest +  54;
-                const int UngroupSelection                   = Lowest +  55;
-
-                const int HideSelection                      = Lowest +  56;
-                const int IsolateSelection                   = Lowest +  57;
-                const int ShowAll                            = Lowest +  58;
-                
+                const int ToggleFlyMode                      = Lowest +  54;
+                const int DeactivateTool                     = Lowest +  55;
                 /*
                 const int CorrectVertices                    = Lowest +  82;
                  */

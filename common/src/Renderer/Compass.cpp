@@ -30,9 +30,10 @@
 #include "Renderer/ShaderManager.h"
 #include "Renderer/Shader.h"
 #include "Renderer/Transformation.h"
+#include "Renderer/IndexRangeMapBuilder.h"
 #include "Renderer/Vertex.h"
+#include "Renderer/VertexArray.h"
 #include "Renderer/VertexSpec.h"
-#include "View/MovementRestriction.h"
 
 #include <cassert>
 
@@ -44,32 +45,30 @@ namespace TrenchBroom {
         const float Compass::m_headLength = 7.0f;
         const float Compass::m_headRadius = 3.5f;
 
-        Compass::Compass(const View::MovementRestriction& restriction) :
-        m_restriction(restriction),
+        Compass::Compass() :
         m_prepared(false) {
             makeArrows();
             makeBackground();
         }
         
+        Compass::~Compass() {}
+        
         void Compass::render(RenderBatch& renderBatch) {
             renderBatch.add(this);
         }
 
-        void Compass::doPrepare(Vbo& vbo) {
+        void Compass::doPrepareVertices(Vbo& vertexVbo) {
             if (!m_prepared) {
-                m_strip.prepare(vbo);
-                m_set.prepare(vbo);
-                m_fans.prepare(vbo);
-                m_backgroundOutline.prepare(vbo);
-                m_background.prepare(vbo);
+                m_arrowRenderer.prepare(vertexVbo);
+                m_backgroundRenderer.prepare(vertexVbo);
+                m_backgroundOutlineRenderer.prepare(vertexVbo);
                 m_prepared = true;
             }
         }
         
         void Compass::doRender(RenderContext& renderContext) {
-            glClear(GL_DEPTH_BUFFER_BIT);
-            
-            const Camera::Viewport& viewport = renderContext.camera().unzoomedViewport();
+            const Camera& camera = renderContext.camera();
+            const Camera::Viewport& viewport = camera.unzoomedViewport();
             const int viewWidth = viewport.width;
             const int viewHeight = viewport.height;
             
@@ -79,33 +78,12 @@ namespace TrenchBroom {
             
             const Mat4x4f compassTransformation = translationMatrix(Vec3f(-viewWidth / 2.0f + 55.0f, 0.0f, -viewHeight / 2.0f + 55.0f)) * scalingMatrix<4>(2.0f);
             const MultiplyModelMatrix compass(renderContext.transformation(), compassTransformation);
-            
-            PreferenceManager& prefs = PreferenceManager::instance();
-            const Mat4x4f cameraTransformation = cameraRotationMatrix(renderContext.camera());
-            
+            const Mat4x4f cameraTransformation = cameraRotationMatrix(camera);
+
+            glAssert(glClear(GL_DEPTH_BUFFER_BIT));
             renderBackground(renderContext);
-            glClear(GL_DEPTH_BUFFER_BIT);
-            
-            if (m_restriction.isRestricted(Math::Axis::AX)) {
-                renderSolidAxis(  renderContext, cameraTransformation, prefs.get(Preferences::ZAxisColor));
-                renderSolidAxis(  renderContext, cameraTransformation * Mat4x4f::Rot90YCCW, prefs.get(Preferences::XAxisColor));
-                renderAxisOutline(renderContext, cameraTransformation * Mat4x4f::Rot90XCW, prefs.get(Preferences::CompassAxisOutlineColor));
-                renderSolidAxis(  renderContext, cameraTransformation * Mat4x4f::Rot90XCW, prefs.get(Preferences::YAxisColor));
-            } else if (m_restriction.isRestricted(Math::Axis::AY)) {
-                renderSolidAxis(  renderContext, cameraTransformation, prefs.get(Preferences::ZAxisColor));
-                renderSolidAxis(  renderContext, cameraTransformation * Mat4x4f::Rot90XCW, prefs.get(Preferences::YAxisColor));
-                renderAxisOutline(renderContext, cameraTransformation * Mat4x4f::Rot90YCCW, prefs.get(Preferences::CompassAxisOutlineColor));
-                renderSolidAxis(  renderContext, cameraTransformation * Mat4x4f::Rot90YCCW, prefs.get(Preferences::XAxisColor));
-            } else if (m_restriction.isRestricted(Math::Axis::AZ)) {
-                renderSolidAxis(  renderContext, cameraTransformation * Mat4x4f::Rot90YCCW, prefs.get(Preferences::XAxisColor));
-                renderSolidAxis(  renderContext, cameraTransformation * Mat4x4f::Rot90XCW, prefs.get(Preferences::YAxisColor));
-                renderAxisOutline(renderContext, cameraTransformation, prefs.get(Preferences::CompassAxisOutlineColor));
-                renderSolidAxis(  renderContext, cameraTransformation, prefs.get(Preferences::ZAxisColor));
-            } else {
-                renderSolidAxis(renderContext, cameraTransformation, prefs.get(Preferences::ZAxisColor));
-                renderSolidAxis(renderContext, cameraTransformation * Mat4x4f::Rot90YCCW, prefs.get(Preferences::XAxisColor));
-                renderSolidAxis(renderContext, cameraTransformation * Mat4x4f::Rot90XCW, prefs.get(Preferences::YAxisColor));
-            }
+            glAssert(glClear(GL_DEPTH_BUFFER_BIT));
+            doRenderCompass(renderContext, cameraTransformation);
         }
 
         void Compass::makeArrows() {
@@ -133,21 +111,24 @@ namespace TrenchBroom {
             }
             
             typedef VertexSpecs::P3N::Vertex Vertex;
-            Vertex::List shaftVertices = Vertex::fromLists(shaft.vertices, shaft.normals, shaft.vertices.size());
-            Vertex::List headVertices = Vertex::fromLists(head.vertices, head.normals, head.vertices.size());
-            Vertex::List capVertices = VectorUtils::concatenate(Vertex::fromLists(shaftCap.vertices, shaftCap.normals, shaftCap.vertices.size()),
-                                                                      Vertex::fromLists(headCap.vertices, headCap.normals, headCap.vertices.size()));
-            VertexArray::IndexArray indices(2);
-            indices[0] = 0;
-            indices[1] = static_cast<GLint>(shaftCap.vertices.size());
+            Vertex::List shaftVertices    = Vertex::fromLists(shaft.vertices, shaft.normals, shaft.vertices.size());
+            Vertex::List headVertices     = Vertex::fromLists(head.vertices,  head.normals,  head.vertices.size());
+            Vertex::List shaftCapVertices = Vertex::fromLists(shaftCap.vertices, shaftCap.normals, shaftCap.vertices.size());
+            Vertex::List headCapVertices  = Vertex::fromLists(headCap.vertices,  headCap.normals,  headCap.vertices.size());
+
+            const size_t vertexCount = shaftVertices.size() + headVertices.size() + shaftCapVertices.size() + headCapVertices.size();
+            IndexRangeMap::Size indexArraySize;
+            indexArraySize.inc(GL_TRIANGLE_STRIP);
+            indexArraySize.inc(GL_TRIANGLE_FAN, 2);
+            indexArraySize.inc(GL_TRIANGLES, headVertices.size() / 3);
             
-            VertexArray::CountArray counts(2);
-            counts[0] = static_cast<GLsizei>(shaftCap.vertices.size());
-            counts[1] = static_cast<GLsizei>(headCap.vertices.size());
-            
-            m_strip = VertexArray::swap(GL_TRIANGLE_STRIP, shaftVertices);
-            m_set = VertexArray::swap(GL_TRIANGLES, headVertices);
-            m_fans = VertexArray::swap(GL_TRIANGLE_FAN, capVertices, indices, counts);
+            IndexRangeMapBuilder<Vertex::Spec> builder(vertexCount, indexArraySize);
+            builder.addTriangleStrip(shaftVertices);
+            builder.addTriangleFan(shaftCapVertices);
+            builder.addTriangleFan(headCapVertices);
+            builder.addTriangles(headVertices);
+
+            m_arrowRenderer = IndexRangeRenderer(builder);
         }
         
         void Compass::makeBackground() {
@@ -155,8 +136,21 @@ namespace TrenchBroom {
             Vec2f::List circ = circle2D((m_shaftLength + m_headLength) / 2.0f + 5.0f, 0.0f, Math::Cf::twoPi(), m_segments);
             Vertex::List verts = Vertex::fromLists(circ, circ.size());
             
-            m_background = VertexArray::swap(GL_TRIANGLE_FAN, verts);
-            m_backgroundOutline = VertexArray::swap(GL_LINE_LOOP, verts);
+            IndexRangeMap::Size backgroundSize;
+            backgroundSize.inc(GL_TRIANGLE_FAN);
+            
+            IndexRangeMapBuilder<Vertex::Spec> backgroundBuilder(verts.size(), backgroundSize);
+            backgroundBuilder.addTriangleFan(verts);
+            
+            m_backgroundRenderer = IndexRangeRenderer(backgroundBuilder);
+            
+            IndexRangeMap::Size outlineSize;
+            outlineSize.inc(GL_LINE_LOOP);
+            
+            IndexRangeMapBuilder<Vertex::Spec> outlineBuilder(verts.size(), outlineSize);
+            outlineBuilder.addLineLoop(verts);
+            
+            m_backgroundOutlineRenderer = IndexRangeRenderer(outlineBuilder);
         }
 
         Mat4x4f Compass::cameraRotationMatrix(const Camera& camera) const {
@@ -177,9 +171,9 @@ namespace TrenchBroom {
             const MultiplyModelMatrix rotate(renderContext.transformation(), Mat4x4f::Rot90XCCW);
             ActiveShader shader(renderContext.shaderManager(), Shaders::CompassBackgroundShader);
             shader.set("Color", prefs.get(Preferences::CompassBackgroundColor));
-            m_background.render();
+            m_backgroundRenderer.render();
             shader.set("Color", prefs.get(Preferences::CompassBackgroundOutlineColor));
-            m_backgroundOutline.render();
+            m_backgroundOutlineRenderer.render();
         }
 
         void Compass::renderSolidAxis(RenderContext& renderContext, const Mat4x4f& transformation, const Color& color) {
@@ -199,25 +193,22 @@ namespace TrenchBroom {
         }
         
         void Compass::renderAxisOutline(RenderContext& renderContext, const Mat4x4f& transformation, const Color& color) {
-            glDepthMask(GL_FALSE);
-            glLineWidth(3.0f);
-            glPolygonMode(GL_FRONT, GL_LINE);
+            glAssert(glDepthMask(GL_FALSE));
+            glAssert(glLineWidth(3.0f));
+            glAssert(glPolygonMode(GL_FRONT, GL_LINE));
             
             ActiveShader shader(renderContext.shaderManager(), Shaders::CompassOutlineShader);
             shader.set("Color", color);
             renderAxis(renderContext, transformation);
             
-            glDepthMask(GL_TRUE);
-            glLineWidth(1.0f);
-            glPolygonMode(GL_FRONT, GL_FILL);
+            glAssert(glDepthMask(GL_TRUE));
+            glAssert(glLineWidth(1.0f));
+            glAssert(glPolygonMode(GL_FRONT, GL_FILL));
         }
 
         void Compass::renderAxis(RenderContext& renderContext, const Mat4x4f& transformation) {
             const MultiplyModelMatrix apply(renderContext.transformation(), transformation);
-            
-            m_strip.render();
-            m_set.render();
-            m_fans.render();
+            m_arrowRenderer.render();
         }
     }
 }

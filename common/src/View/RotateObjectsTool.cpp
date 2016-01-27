@@ -65,6 +65,7 @@ namespace TrenchBroom {
         
         void RotateObjectsTool::setRotationCenter(const Vec3& position) {
             m_handle.setPosition(position);
+            m_toolPage->setCenter(position);
             refreshViews();
         }
         
@@ -134,6 +135,10 @@ namespace TrenchBroom {
             assert(m_toolPage == NULL);
             m_toolPage = new RotateObjectsToolPage(parent, m_document, this);
             return m_toolPage;
+        }
+
+        String RotateObjectsTool::doGetIconName() const {
+            return "RotateTool.png";
         }
     }
 }

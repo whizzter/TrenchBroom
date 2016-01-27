@@ -36,7 +36,7 @@ namespace TrenchBroom {
                     return oldValue * newValue;
                 case ChangeBrushFaceAttributesRequest::ValueOp_None:
                     return oldValue;
-                    DEFAULT_SWITCH()
+                    switchDefault()
             }
         }
         
@@ -51,7 +51,7 @@ namespace TrenchBroom {
                     return oldValue & ~newValue;
                 case ChangeBrushFaceAttributesRequest::FlagOp_None:
                     return oldValue;
-                    DEFAULT_SWITCH()
+                    switchDefault()
             }
         }
         
@@ -71,6 +71,29 @@ namespace TrenchBroom {
             }
         }
         
+        bool collateAxisOp(ChangeBrushFaceAttributesRequest::AxisOp& myOp, const ChangeBrushFaceAttributesRequest::AxisOp theirOp);
+        bool collateAxisOp(ChangeBrushFaceAttributesRequest::AxisOp& myOp, const ChangeBrushFaceAttributesRequest::AxisOp theirOp) {
+            switch (myOp) {
+                case ChangeBrushFaceAttributesRequest::AxisOp_None:
+                    myOp = theirOp;
+                    return true;
+                case ChangeBrushFaceAttributesRequest::AxisOp_Reset:
+                case ChangeBrushFaceAttributesRequest::AxisOp_ToParaxial:
+                case ChangeBrushFaceAttributesRequest::AxisOp_ToParallel:
+                    switch (theirOp) {
+                        case ChangeBrushFaceAttributesRequest::AxisOp_None:
+                            return true;
+                        case ChangeBrushFaceAttributesRequest::AxisOp_Reset:
+                        case ChangeBrushFaceAttributesRequest::AxisOp_ToParallel:
+                        case ChangeBrushFaceAttributesRequest::AxisOp_ToParaxial:
+                            myOp = theirOp;
+                            return true;
+                        switchDefault()
+                    }
+                switchDefault()
+            };
+        }
+        
         template <typename T>
         bool collateValueOp(ChangeBrushFaceAttributesRequest::ValueOp& myOp, T& myValue, const ChangeBrushFaceAttributesRequest::ValueOp theirOp, const T theirValue) {
             switch (myOp) {
@@ -88,7 +111,7 @@ namespace TrenchBroom {
                         case ChangeBrushFaceAttributesRequest::ValueOp_Add:
                         case ChangeBrushFaceAttributesRequest::ValueOp_Mul:
                             return false;
-                            DEFAULT_SWITCH()
+                        switchDefault()
                     }
                 case ChangeBrushFaceAttributesRequest::ValueOp_Add:
                     switch (theirOp) {
@@ -103,7 +126,7 @@ namespace TrenchBroom {
                             return true;
                         case ChangeBrushFaceAttributesRequest::ValueOp_Mul:
                             return false;
-                            DEFAULT_SWITCH()
+                            switchDefault()
                     }
                 case ChangeBrushFaceAttributesRequest::ValueOp_Mul:
                     switch (theirOp) {
@@ -117,9 +140,9 @@ namespace TrenchBroom {
                         case ChangeBrushFaceAttributesRequest::ValueOp_Mul:
                             myValue *= theirValue;
                             return true;
-                            DEFAULT_SWITCH()
+                            switchDefault()
                     }
-                    DEFAULT_SWITCH()
+                    switchDefault()
             }
         }
         
@@ -139,7 +162,7 @@ namespace TrenchBroom {
                         case ChangeBrushFaceAttributesRequest::FlagOp_Set:
                         case ChangeBrushFaceAttributesRequest::FlagOp_Unset:
                             return false;
-                            DEFAULT_SWITCH()
+                            switchDefault()
                     }
                 case ChangeBrushFaceAttributesRequest::FlagOp_Set:
                     switch (theirOp) {
@@ -154,7 +177,7 @@ namespace TrenchBroom {
                             return true;
                         case ChangeBrushFaceAttributesRequest::FlagOp_Unset:
                             return false;
-                            DEFAULT_SWITCH()
+                            switchDefault()
                     }
                 case ChangeBrushFaceAttributesRequest::FlagOp_Unset:
                     switch (theirOp) {
@@ -169,9 +192,9 @@ namespace TrenchBroom {
                         case ChangeBrushFaceAttributesRequest::FlagOp_Unset:
                             myValue |= theirValue;
                             return true;
-                            DEFAULT_SWITCH()
+                            switchDefault()
                     }
-                    DEFAULT_SWITCH()
+                    switchDefault()
             }
         }
 
@@ -186,6 +209,7 @@ namespace TrenchBroom {
         m_contentFlags(0),
         m_surfaceValue(0.0f),
         m_setTexture(false),
+        m_axisOp(AxisOp_None),
         m_xOffsetOp(ValueOp_None),
         m_yOffsetOp(ValueOp_None),
         m_rotationOp(ValueOp_None),
@@ -203,6 +227,7 @@ namespace TrenchBroom {
             m_surfaceFlags = m_contentFlags = 0;
             m_surfaceValue = 0.0f;
             m_setTexture = false;
+            m_axisOp = AxisOp_None;
             m_xOffsetOp = m_yOffsetOp = ValueOp_None;
             m_rotationOp = ValueOp_None;
             m_xScaleOp = m_yScaleOp = ValueOp_None;
@@ -220,6 +245,18 @@ namespace TrenchBroom {
                 BrushFace* face = *it;
                 if (m_setTexture)
                     face->setTexture(m_texture);
+                
+                switch (m_axisOp) {
+                    case AxisOp_Reset:
+                        face->resetTextureAxes();
+                        break;
+                    case AxisOp_None:
+                    case AxisOp_ToParaxial:
+                    case AxisOp_ToParallel:
+                        break;
+                    switchDefault()
+                }
+                
                 face->setXOffset(evaluateValueOp(face->xOffset(), m_xOffset, m_xOffsetOp));
                 face->setYOffset(evaluateValueOp(face->yOffset(), m_yOffset, m_yOffsetOp));
                 face->setRotation(evaluateValueOp(face->rotation(), m_rotation, m_rotationOp));
@@ -236,6 +273,18 @@ namespace TrenchBroom {
             m_setTexture = true;
         }
         
+        void ChangeBrushFaceAttributesRequest::resetTextureAxes() {
+            m_axisOp = AxisOp_Reset;
+        }
+
+        void ChangeBrushFaceAttributesRequest::resetTextureAxesToParaxial() {
+            m_axisOp = AxisOp_ToParaxial;
+        }
+        
+        void ChangeBrushFaceAttributesRequest::resetTextureAxesToParallel() {
+            m_axisOp = AxisOp_ToParallel;
+        }
+
         void ChangeBrushFaceAttributesRequest::setOffset(const Vec2f& offset) {
             setXOffset(offset.x());
             setYOffset(offset.y());
@@ -408,6 +457,8 @@ namespace TrenchBroom {
 
         bool ChangeBrushFaceAttributesRequest::collateWith(ChangeBrushFaceAttributesRequest& other) {
             Assets::Texture* newTexture = m_texture; bool newSetTexture = m_setTexture;
+            AxisOp newAxisOp = m_axisOp;
+            
             float newXOffset = m_xOffset;   ValueOp newXOffsetOp = m_xOffsetOp;
             float newYOffset = m_yOffset;   ValueOp newYOffsetOp = m_yOffsetOp;
             float newRotation = m_rotation; ValueOp newRotationOp = m_rotationOp;
@@ -418,6 +469,8 @@ namespace TrenchBroom {
             int newContentFlags = m_contentFlags; FlagOp newContentFlagsOp = m_contentFlagsOp;
             float newSurfaceValue = m_surfaceValue; ValueOp newSurfaceValueOp = m_surfaceValueOp;
             
+            if (!collateAxisOp(newAxisOp, other.m_axisOp))
+                return false;
             if (!collateTextureOp(newSetTexture, newTexture, other.m_setTexture, other.m_texture))
                 return false;
             if (!collateValueOp(newXOffsetOp, newXOffset, other.m_xOffsetOp, other.m_xOffset))
@@ -439,6 +492,7 @@ namespace TrenchBroom {
                 return false;
             
             m_texture = newTexture; m_setTexture = newSetTexture;
+            m_axisOp = newAxisOp;
             m_xOffset = newXOffset; m_xOffsetOp = newXOffsetOp;
             m_yOffset = newYOffset; m_yOffsetOp = newYOffsetOp;
             m_rotation = newRotation; m_rotationOp = newRotationOp;

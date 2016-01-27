@@ -22,9 +22,8 @@
 #include "PreferenceManager.h"
 #include "Preferences.h"
 #include "Reference.h"
-#include "Model/BrushEdge.h"
 #include "Model/BrushFace.h"
-#include "Model/BrushVertex.h"
+#include "Model/BrushGeometry.h"
 #include "Model/HitQuery.h"
 #include "Model/PickResult.h"
 #include "Renderer/RenderContext.h"
@@ -57,12 +56,12 @@ namespace TrenchBroom {
         }
         
         void ResizeBrushesToolAdapter::doModifierKeyChange(const InputState& inputState) {
-            // here we must always update the drag faces, otherwise the won't get cleared when the shift key is released
-            m_tool->updateDragFaces(inputState.pickResult());
+            updateDragFaces(inputState);
         }
         
         void ResizeBrushesToolAdapter::doMouseMove(const InputState& inputState) {
-            updateDragFaces(inputState);
+            if (handleInput(inputState))
+                updateDragFaces(inputState);
         }
         
         bool ResizeBrushesToolAdapter::doStartMouseDrag(const InputState& inputState) {
@@ -95,34 +94,30 @@ namespace TrenchBroom {
         }
         
         void ResizeBrushesToolAdapter::doRender(const InputState& inputState, Renderer::RenderContext& renderContext, Renderer::RenderBatch& renderBatch) {
-            if (!handleInput(inputState) || !m_tool->hasDragFaces())
-                return;
-            
-            Renderer::EdgeRenderer edgeRenderer = buildEdgeRenderer();
-            Renderer::RenderEdges* renderEdges = new Renderer::RenderEdges(Reference::swap(edgeRenderer));
-            renderEdges->setRenderOccluded();
-            renderEdges->setColor(pref(Preferences::ResizeHandleColor));
-            renderBatch.addOneShot(renderEdges);
+            if (m_tool->hasDragFaces()) {
+                Renderer::DirectEdgeRenderer edgeRenderer = buildEdgeRenderer();
+                edgeRenderer.renderOnTop(renderBatch, pref(Preferences::ResizeHandleColor));
+            }
         }
 
-        Renderer::EdgeRenderer ResizeBrushesToolAdapter::buildEdgeRenderer() {
+        Renderer::DirectEdgeRenderer ResizeBrushesToolAdapter::buildEdgeRenderer() {
             typedef Renderer::VertexSpecs::P3::Vertex Vertex;
             Vertex::List vertices;
             
             const Model::BrushFaceList& dragFaces = m_tool->dragFaces();
             Model::BrushFaceList::const_iterator faceIt, faceEnd;
-            Model::BrushEdgeList::const_iterator edgeIt, edgeEnd;
+            Model::BrushFace::EdgeList::const_iterator edgeIt, edgeEnd;
             for (faceIt = dragFaces.begin(), faceEnd = dragFaces.end(); faceIt != faceEnd; ++faceIt) {
                 const Model::BrushFace* face = *faceIt;
-                const Model::BrushEdgeList& edges = face->edges();
+                const Model::BrushFace::EdgeList edges = face->edges();
                 for (edgeIt = edges.begin(), edgeEnd = edges.end(); edgeIt != edgeEnd; ++edgeIt) {
                     const Model::BrushEdge* edge = *edgeIt;
-                    vertices.push_back(Vertex(edge->start->position));
-                    vertices.push_back(Vertex(edge->end->position));
+                    vertices.push_back(Vertex(edge->firstVertex()->position()));
+                    vertices.push_back(Vertex(edge->secondVertex()->position()));
                 }
             }
             
-            return Renderer::EdgeRenderer(Renderer::VertexArray::swap(GL_LINES, vertices));
+            return Renderer::DirectEdgeRenderer(Renderer::VertexArray::swap(vertices), GL_LINES);
         }
         
         bool ResizeBrushesToolAdapter::doCancel() {
@@ -130,7 +125,7 @@ namespace TrenchBroom {
         }
 
         void ResizeBrushesToolAdapter::updateDragFaces(const InputState& inputState) {
-            if (handleInput(inputState) && !dragging())
+            if (!dragging())
                 m_tool->updateDragFaces(inputState.pickResult());
         }
 

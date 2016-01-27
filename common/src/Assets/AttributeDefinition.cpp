@@ -24,10 +24,11 @@
 
 namespace TrenchBroom {
     namespace Assets {
-        AttributeDefinition::AttributeDefinition(const String& name, const Type type, const String& description) :
+        AttributeDefinition::AttributeDefinition(const String& name, const Type type, const String& shortDescription, const String& longDescription) :
         m_name(name),
         m_type(type),
-        m_description(description) {}
+        m_shortDescription(shortDescription),
+        m_longDescription(longDescription) {}
         
         AttributeDefinition::~AttributeDefinition() {}
         
@@ -39,8 +40,30 @@ namespace TrenchBroom {
             return m_type;
         }
         
-        const String& AttributeDefinition::description() const {
-            return m_description;
+        const String& AttributeDefinition::shortDescription() const {
+            return m_shortDescription;
+        }
+
+        const String& AttributeDefinition::longDescription() const {
+            return m_longDescription;
+        }
+        
+        String AttributeDefinition::fullDescription() const {
+            StringStream result;
+            if (!m_shortDescription.empty() && !m_longDescription.empty()) {
+                result << m_shortDescription << std::endl << std::endl << m_longDescription;
+            } else if (!m_shortDescription.empty()) {
+                result << m_shortDescription;
+            } else if (!m_longDescription.empty()) {
+                result << m_longDescription;
+            } else {
+                result << "No description found";
+            }
+            return result.str();
+        }
+
+        String AttributeDefinition::safeFullDescription(const AttributeDefinition* definition) {
+            return definition == NULL ? EmptyString : definition->fullDescription();
         }
 
         bool AttributeDefinition::equals(const AttributeDefinition* other) const {
@@ -97,27 +120,27 @@ namespace TrenchBroom {
                 case Type_TargetSourceAttribute:
                 case Type_TargetDestinationAttribute:
                     return "";
-                DEFAULT_SWITCH()
+                switchDefault()
             }
         }
 
-        StringAttributeDefinition::StringAttributeDefinition(const String& name, const String& description, const String& defaultValue) :
-        AttributeDefinitionWithDefaultValue(name, Type_StringAttribute, description, defaultValue) {}
+        StringAttributeDefinition::StringAttributeDefinition(const String& name, const String& shortDescription, const String& longDescription, const String& defaultValue) :
+        AttributeDefinitionWithDefaultValue(name, Type_StringAttribute, shortDescription, longDescription, defaultValue) {}
         
-        StringAttributeDefinition::StringAttributeDefinition(const String& name, const String& description) :
-        AttributeDefinitionWithDefaultValue(name, Type_StringAttribute, description) {}
+        StringAttributeDefinition::StringAttributeDefinition(const String& name, const String& shortDescription, const String& longDescription) :
+        AttributeDefinitionWithDefaultValue(name, Type_StringAttribute, shortDescription, longDescription) {}
 
-        IntegerAttributeDefinition::IntegerAttributeDefinition(const String& name, const String& description, const int defaultValue) :
-        AttributeDefinitionWithDefaultValue(name, Type_IntegerAttribute, description, defaultValue) {}
+        IntegerAttributeDefinition::IntegerAttributeDefinition(const String& name, const String& shortDescription, const String& longDescription, const int defaultValue) :
+        AttributeDefinitionWithDefaultValue(name, Type_IntegerAttribute, shortDescription, longDescription, defaultValue) {}
         
-        IntegerAttributeDefinition::IntegerAttributeDefinition(const String& name, const String& description) :
-        AttributeDefinitionWithDefaultValue(name, Type_IntegerAttribute, description) {}
+        IntegerAttributeDefinition::IntegerAttributeDefinition(const String& name, const String& shortDescription, const String& longDescription) :
+        AttributeDefinitionWithDefaultValue(name, Type_IntegerAttribute, shortDescription, longDescription) {}
 
-        FloatAttributeDefinition::FloatAttributeDefinition(const String& name, const String& description, const float defaultValue) :
-        AttributeDefinitionWithDefaultValue(name, Type_FloatAttribute, description, defaultValue) {}
+        FloatAttributeDefinition::FloatAttributeDefinition(const String& name, const String& shortDescription, const String& longDescription, const float defaultValue) :
+        AttributeDefinitionWithDefaultValue(name, Type_FloatAttribute, shortDescription, longDescription, defaultValue) {}
         
-        FloatAttributeDefinition::FloatAttributeDefinition(const String& name, const String& description) :
-        AttributeDefinitionWithDefaultValue(name, Type_FloatAttribute, description) {}
+        FloatAttributeDefinition::FloatAttributeDefinition(const String& name, const String& shortDescription, const String& longDescription) :
+        AttributeDefinitionWithDefaultValue(name, Type_FloatAttribute, shortDescription, longDescription) {}
 
         ChoiceAttributeOption::ChoiceAttributeOption(const String& value, const String& description) :
         m_value(value),
@@ -135,12 +158,12 @@ namespace TrenchBroom {
             return m_description;
         }
 
-        ChoiceAttributeDefinition::ChoiceAttributeDefinition(const String& name, const String& description, const ChoiceAttributeOption::List& options, const size_t defaultValue) :
-        AttributeDefinitionWithDefaultValue(name, Type_ChoiceAttribute, description, defaultValue),
+        ChoiceAttributeDefinition::ChoiceAttributeDefinition(const String& name, const String& shortDescription, const String& longDescription, const ChoiceAttributeOption::List& options, const size_t defaultValue) :
+        AttributeDefinitionWithDefaultValue(name, Type_ChoiceAttribute, shortDescription, longDescription, defaultValue),
         m_options(options) {}
         
-        ChoiceAttributeDefinition::ChoiceAttributeDefinition(const String& name, const String& description, const ChoiceAttributeOption::List& options) :
-        AttributeDefinitionWithDefaultValue(name, Type_ChoiceAttribute, description),
+        ChoiceAttributeDefinition::ChoiceAttributeDefinition(const String& name, const String& shortDescription, const String& longDescription, const ChoiceAttributeOption::List& options) :
+        AttributeDefinitionWithDefaultValue(name, Type_ChoiceAttribute, shortDescription, longDescription),
         m_options(options) {}
         
         const ChoiceAttributeOption::List& ChoiceAttributeDefinition::options() const {
@@ -151,32 +174,40 @@ namespace TrenchBroom {
             return options() == static_cast<const ChoiceAttributeDefinition*>(other)->options();
         }
 
-        FlagsAttributeOption::FlagsAttributeOption(const int value, const String& description, const bool isDefault) :
+        FlagsAttributeOption::FlagsAttributeOption(const int value, const String& shortDescription, const String& longDescription, const bool isDefault) :
         m_value(value),
-        m_description(description),
+        m_shortDescription(shortDescription),
+        m_longDescription(longDescription),
         m_isDefault(isDefault) {}
         
         bool FlagsAttributeOption::operator==(const FlagsAttributeOption& other) const {
-            return m_value == other.m_value && m_description == other.m_description && m_isDefault == other.m_isDefault;
+            return (m_value == other.m_value &&
+                    m_shortDescription == other.m_shortDescription &&
+                    m_longDescription == other.m_longDescription &&
+                    m_isDefault == other.m_isDefault);
         }
         
         int FlagsAttributeOption::value() const {
             return m_value;
         }
         
-        const String& FlagsAttributeOption::description() const {
-            return m_description;
+        const String& FlagsAttributeOption::shortDescription() const {
+            return m_shortDescription;
         }
 
+        const String& FlagsAttributeOption::longDescription() const {
+            return m_longDescription;
+        }
+        
         bool FlagsAttributeOption::isDefault() const {
             return m_isDefault;
         }
 
-        FlagsAttributeDefinition::FlagsAttributeDefinition(const String& name, const String& description, const int defaultValue) :
-        AttributeDefinition(name, Type_FlagsAttribute, description) {}
+        FlagsAttributeDefinition::FlagsAttributeDefinition(const String& name, const int defaultValue) :
+        AttributeDefinition(name, Type_FlagsAttribute, EmptyString, EmptyString) {}
         
-        FlagsAttributeDefinition::FlagsAttributeDefinition(const String& name, const String& description) :
-        AttributeDefinition(name, Type_FlagsAttribute, description) {}
+        FlagsAttributeDefinition::FlagsAttributeDefinition(const String& name) :
+        AttributeDefinition(name, Type_FlagsAttribute, EmptyString, EmptyString) {}
         
         int FlagsAttributeDefinition::defaultValue() const {
             int value = 0;
@@ -205,12 +236,18 @@ namespace TrenchBroom {
             return VectorUtils::findIf(m_options, FindFlagByValue(value));
         }
 
-        void FlagsAttributeDefinition::addOption(const int value, const String& description, const bool isDefault) {
-            m_options.push_back(FlagsAttributeOption(value, description, isDefault));
+        void FlagsAttributeDefinition::addOption(const int value, const String& shortDescription, const String& longDescription, const bool isDefault) {
+            m_options.push_back(FlagsAttributeOption(value, shortDescription, longDescription, isDefault));
         }
 
         bool FlagsAttributeDefinition::doEquals(const AttributeDefinition* other) const {
             return options() == static_cast<const FlagsAttributeDefinition*>(other)->options();
         }
+
+        UnknownAttributeDefinition::UnknownAttributeDefinition(const String& name, const String& shortDescription, const String& longDescription, const String& defaultValue) :
+        StringAttributeDefinition(name, shortDescription, longDescription, defaultValue) {}
+        
+        UnknownAttributeDefinition::UnknownAttributeDefinition(const String& name, const String& shortDescription, const String& longDescription) :
+        StringAttributeDefinition(name, shortDescription, longDescription) {}
     }
 }

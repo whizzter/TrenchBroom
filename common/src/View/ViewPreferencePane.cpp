@@ -28,6 +28,8 @@
 #include "View/wxUtils.h"
 
 #include "Renderer/GL.h"
+
+#include <wx/checkbox.h>
 #include <wx/choice.h>
 #include <wx/clrpicker.h>
 #include <wx/gbsizer.h>
@@ -68,6 +70,8 @@ namespace TrenchBroom {
 
 
         void ViewPreferencePane::OnLayoutChanged(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             const int selection = m_layoutChoice->GetSelection();
             assert(selection >= 0 && selection < static_cast<int>(NumFrameLayouts));
             
@@ -76,6 +80,8 @@ namespace TrenchBroom {
         }
 
         void ViewPreferencePane::OnBrightnessChanged(wxScrollEvent& event) {
+            if (IsBeingDeleted()) return;
+
             const int value = m_brightnessSlider->GetValue();
             
             PreferenceManager& prefs = PreferenceManager::instance();
@@ -83,6 +89,8 @@ namespace TrenchBroom {
         }
         
         void ViewPreferencePane::OnGridAlphaChanged(wxScrollEvent& event) {
+            if (IsBeingDeleted()) return;
+
             const int value = m_gridAlphaSlider->GetValue();
             
             PreferenceManager& prefs = PreferenceManager::instance();
@@ -92,13 +100,26 @@ namespace TrenchBroom {
         }
 
         void ViewPreferencePane::OnBackgroundColorChanged(wxColourPickerEvent& event) {
-            Color value = fromWxColor(event.GetColour());
-            value[3] = 1.0f;
+            if (IsBeingDeleted()) return;
+
+            const Color value(fromWxColor(event.GetColour()), 1.0f);
+            
             PreferenceManager& prefs = PreferenceManager::instance();
             prefs.set(Preferences::BackgroundColor, value);
         }
 
+        void ViewPreferencePane::OnShowAxesChanged(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+            
+            const bool value = event.IsChecked();
+            
+            PreferenceManager& prefs = PreferenceManager::instance();
+            prefs.set(Preferences::ShowAxes, value);
+        }
+
         void ViewPreferencePane::OnTextureModeChanged(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             const int selection = m_textureModeChoice->GetSelection();
             assert(selection >= 0);
             
@@ -113,6 +134,8 @@ namespace TrenchBroom {
         }
 
         void ViewPreferencePane::OnTextureBrowserIconSizeChanged(wxCommandEvent& event) {
+            if (IsBeingDeleted()) return;
+
             PreferenceManager& prefs = PreferenceManager::instance();
 
             const int selection = m_textureBrowserIconSizeChoice->GetSelection();
@@ -178,13 +201,16 @@ namespace TrenchBroom {
             wxStaticText* backgroundColorLabel = new wxStaticText(viewBox, wxID_ANY, "Background Color");
             m_backgroundColorPicker = new wxColourPickerCtrl(viewBox, wxID_ANY);
             
+            wxStaticText* axesLabel = new wxStaticText(viewBox, wxID_ANY, "Coordinate System");
+            m_showAxes = new wxCheckBox(viewBox, wxID_ANY, "Show Axes");
+            
             wxString textureModeNames[NumTextureModes];
             for (size_t i = 0; i < NumTextureModes; ++i)
                 textureModeNames[i] = TextureModes[i].name;
             wxStaticText* textureModeLabel = new wxStaticText(viewBox, wxID_ANY, "Texture Mode");
             m_textureModeChoice = new wxChoice(viewBox, wxID_ANY, wxDefaultPosition, wxDefaultSize, NumTextureModes, textureModeNames);
 
-            TitleBar* textureBrowserPrefsTitle = new TitleBar(viewBox, "Map Views");
+            TitleBar* textureBrowserPrefsTitle = new TitleBar(viewBox, "Texture Browser");
 
             wxStaticText* textureBrowserIconSizeLabel = new wxStaticText(viewBox, wxID_ANY, "Icon Size");
             wxString iconSizes[7] = {"25%", "50%", "100%", "150%", "200%", "250%", "300%"};
@@ -198,6 +224,7 @@ namespace TrenchBroom {
             const int LabelFlags        = wxALIGN_RIGHT | wxALIGN_CENTER_VERTICAL | wxLEFT;
             const int SliderFlags       = wxEXPAND | wxRIGHT;
             const int ChoiceFlags       = wxRIGHT;
+            const int CheckBoxFlags     = wxLeft;
             const int ColorPickerFlags  = wxRIGHT;
             const int LineFlags         = wxEXPAND | wxTOP;
             
@@ -217,6 +244,10 @@ namespace TrenchBroom {
 
             sizer->Add(gridLabel,                           wxGBPosition( r, 0), wxDefaultSpan, LabelFlags, HMargin);
             sizer->Add(m_gridAlphaSlider,                   wxGBPosition( r, 1), wxDefaultSpan, SliderFlags, HMargin);
+            ++r;
+            
+            sizer->Add(axesLabel,                           wxGBPosition( r, 0), wxDefaultSpan, LabelFlags, HMargin);
+            sizer->Add(m_showAxes,                          wxGBPosition( r, 1), wxDefaultSpan, CheckBoxFlags, HMargin);
             ++r;
             
             sizer->Add(backgroundColorLabel,                wxGBPosition( r, 0), wxDefaultSpan, LabelFlags, HMargin);
@@ -253,7 +284,9 @@ namespace TrenchBroom {
             
             bindSliderEvents(m_brightnessSlider, &ViewPreferencePane::OnBrightnessChanged, this);
             bindSliderEvents(m_gridAlphaSlider, &ViewPreferencePane::OnGridAlphaChanged, this);
+            
             m_backgroundColorPicker->Bind(wxEVT_COLOURPICKER_CHANGED, &ViewPreferencePane::OnBackgroundColorChanged, this);
+            m_showAxes->Bind(wxEVT_CHECKBOX, &ViewPreferencePane::OnShowAxesChanged, this);
             
             m_textureModeChoice->Bind(wxEVT_CHOICE, &ViewPreferencePane::OnTextureModeChanged, this);
             m_textureBrowserIconSizeChoice->Bind(wxEVT_CHOICE, &ViewPreferencePane::OnTextureBrowserIconSizeChanged, this);
@@ -268,6 +301,7 @@ namespace TrenchBroom {
             prefs.resetToDefault(Preferences::Brightness);
             prefs.resetToDefault(Preferences::GridAlpha);
             prefs.resetToDefault(Preferences::BackgroundColor);
+            prefs.resetToDefault(Preferences::ShowAxes);
             prefs.resetToDefault(Preferences::TextureMinFilter);
             prefs.resetToDefault(Preferences::TextureMagFilter);
             prefs.resetToDefault(Preferences::TextureBrowserIconSize);
@@ -278,7 +312,9 @@ namespace TrenchBroom {
             
             m_brightnessSlider->SetValue(static_cast<int>(pref(Preferences::Brightness) * 40.0f));
             m_gridAlphaSlider->SetValue(static_cast<int>(pref(Preferences::GridAlpha) * m_gridAlphaSlider->GetMax()));
+            
             m_backgroundColorPicker->SetColour(toWxColor(pref(Preferences::BackgroundColor)));
+            m_showAxes->SetValue(pref(Preferences::ShowAxes));
             
             const size_t textureModeIndex = findTextureMode(pref(Preferences::TextureMinFilter), pref(Preferences::TextureMagFilter));
             assert(textureModeIndex < NumTextureModes);

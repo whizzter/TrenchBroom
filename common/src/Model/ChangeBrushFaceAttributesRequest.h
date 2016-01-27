@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__ChangeBrushFaceAttributesRequest__
-#define __TrenchBroom__ChangeBrushFaceAttributesRequest__
+#ifndef TrenchBroom_ChangeBrushFaceAttributesRequest
+#define TrenchBroom_ChangeBrushFaceAttributesRequest
 
 #include "StringUtils.h"
 #include "Model/ModelTypes.h"
@@ -33,6 +33,13 @@ namespace TrenchBroom {
         
         class ChangeBrushFaceAttributesRequest {
         public:
+            typedef enum {
+                AxisOp_None,
+                AxisOp_Reset,
+                AxisOp_ToParaxial,
+                AxisOp_ToParallel
+            } AxisOp;
+            
             typedef enum {
                 ValueOp_None,
                 ValueOp_Set,
@@ -58,6 +65,7 @@ namespace TrenchBroom {
             float m_surfaceValue;
             
             bool m_setTexture;
+            AxisOp m_axisOp;
             ValueOp m_xOffsetOp;
             ValueOp m_yOffsetOp;
             ValueOp m_rotationOp;
@@ -75,6 +83,10 @@ namespace TrenchBroom {
             void evaluate(const BrushFaceList& faces) const;
             
             void setTexture(Assets::Texture* texture);
+            
+            void resetTextureAxes();
+            void resetTextureAxesToParaxial();
+            void resetTextureAxesToParallel();
             
             void setOffset(const Vec2f& offset);
             void addOffset(const Vec2f& offset);
@@ -118,10 +130,10 @@ namespace TrenchBroom {
             
             void setAll(const Model::BrushFace* face);
             void setAll(const Model::BrushFaceAttributes& attributes);
-            
+
             bool collateWith(ChangeBrushFaceAttributesRequest& other);
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__ChangeBrushFaceAttributesRequest__) */
+#endif /* defined(TrenchBroom_ChangeBrushFaceAttributesRequest) */

@@ -17,8 +17,8 @@
  along with TrenchBroom. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __TrenchBroom__Inspector__
-#define __TrenchBroom__Inspector__
+#ifndef TrenchBroom_Inspector
+#define TrenchBroom_Inspector
 
 #include "View/ViewTypes.h"
 
@@ -50,11 +50,12 @@ namespace TrenchBroom {
             FaceInspector* m_faceInspector;
         public:
             Inspector(wxWindow* parent, MapDocumentWPtr document, GLContextManager& contextManager);
+            void connectTopWidgets(wxWindow* master);
             void switchToPage(InspectorPage page);
-            
-            void setTabBarHeight(int height);
+        private:
+            void OnTopWidgetSize(wxSizeEvent& event);
         };
     }
 }
 
-#endif /* defined(__TrenchBroom__Inspector__) */
+#endif /* defined(TrenchBroom_Inspector) */

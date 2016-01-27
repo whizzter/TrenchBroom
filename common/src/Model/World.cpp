@@ -36,6 +36,7 @@ namespace TrenchBroom {
         World::World(MapFormat::Type mapFormat, const BrushContentTypeBuilder* brushContentTypeBuilder, const BBox3& worldBounds) :
         m_factory(mapFormat, brushContentTypeBuilder),
         m_defaultLayer(NULL) {
+            addOrUpdateAttribute(AttributeNames::Classname, AttributeValues::WorldspawnClassname);
             createDefaultLayer(worldBounds);
         }
 
@@ -96,11 +97,25 @@ namespace TrenchBroom {
             acceptAndRecurse(visitor);
         }
 
+        const BBox3& World::doGetBounds() const {
+            // TODO: this should probably return the world bounds, as it does in Layer::doGetBounds
+            static const BBox3 bounds;
+            return bounds;
+        }
+
         Node* World::doClone(const BBox3& worldBounds) const {
+            World* world = m_factory.createWorld(worldBounds);
+            cloneAttributes(world);
+            return world;
+        }
+
+        Node* World::doCloneRecursively(const BBox3& worldBounds) const {
             const NodeList& myChildren = children();
             assert(myChildren[0] == m_defaultLayer);
-
+            
             World* world = m_factory.createWorld(worldBounds);
+            cloneAttributes(world);
+
             world->defaultLayer()->addChildren(clone(worldBounds, m_defaultLayer->children()));
             
             if (myChildren.size() > 1) {
@@ -208,7 +223,7 @@ namespace TrenchBroom {
                 return false;
             if (name == AttributeNames::Wad)
                 return false;
-            if (name == AttributeNames::Wal)
+            if (name == AttributeNames::Textures)
                 return false;
             return true;
         }
@@ -220,7 +235,7 @@ namespace TrenchBroom {
                 return false;
             if (name == AttributeNames::Wad)
                 return false;
-            if (name == AttributeNames::Wal)
+            if (name == AttributeNames::Textures)
                 return false;
             return true;
         }
@@ -257,12 +272,12 @@ namespace TrenchBroom {
             return m_factory.createBrush(worldBounds, faces);
         }
         
-        BrushFace* World::doCreateFace(const Vec3& point1, const Vec3& point2, const Vec3& point3, const String& textureName) const {
-            return m_factory.createFace(point1, point2, point3, textureName);
+        BrushFace* World::doCreateFace(const Vec3& point1, const Vec3& point2, const Vec3& point3, const BrushFaceAttributes& attribs) const {
+            return m_factory.createFace(point1, point2, point3, attribs);
         }
         
-        BrushFace* World::doCreateFace(const Vec3& point1, const Vec3& point2, const Vec3& point3, const String& textureName, const Vec3& texAxisX, const Vec3& texAxisY) const {
-            return m_factory.createFace(point1, point2, point3, textureName, texAxisX, texAxisY);
+        BrushFace* World::doCreateFace(const Vec3& point1, const Vec3& point2, const Vec3& point3, const BrushFaceAttributes& attribs, const Vec3& texAxisX, const Vec3& texAxisY) const {
+            return m_factory.createFace(point1, point2, point3, attribs, texAxisX, texAxisY);
         }
     }
 }

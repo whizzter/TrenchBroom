@@ -803,6 +803,12 @@ TEST(MatTest, invertedMatrix) {
     ASSERT_TRUE(invertible);
 }
 
+TEST(MatTest, rotationMatrixWithEulerAngles) {
+    ASSERT_MAT_EQ(Mat4x4d::Rot90XCCW, rotationMatrix(Math::radians(90.0), 0.0, 0.0));
+    ASSERT_MAT_EQ(Mat4x4d::Rot90YCCW, rotationMatrix(0.0, Math::radians(90.0), 0.0));
+    ASSERT_MAT_EQ(Mat4x4d::Rot90ZCCW, rotationMatrix(0.0, 0.0, Math::radians(90.0)));
+}
+
 TEST(MatTest, rotationMatrixWithAngleAndAxis) {
     ASSERT_MAT_EQ(Mat4x4d::Rot90XCCW, rotationMatrix(Vec3d::PosX, Math::radians(90.0)));
     ASSERT_MAT_EQ(Mat4x4d::Rot90YCCW, rotationMatrix(Vec3d::PosY, Math::radians(90.0)));
